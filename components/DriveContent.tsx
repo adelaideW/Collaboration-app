@@ -17,7 +17,8 @@ import {
   Users,
   Info,
   PencilLine,
-  ExternalLink
+  ChevronDown,
+  ArrowUp
 } from 'lucide-react';
 import { ViewType, DriveItem } from '../types';
 import { MOCK_ITEMS, getIcon, CustomAppIcon, DocumentsIcon, DeveloperToolsIcon, ReportsIcon, WorkflowAutomatorIcon } from '../constants';
@@ -59,14 +60,13 @@ const DriveContent: React.FC<DriveContentProps> = ({ view }) => {
   };
 
   const openInNewTab = (item: DriveItem) => {
-    // Simulate opening the editor/app in a new browser tab
     const url = `${window.location.origin}${window.location.pathname}?view=APP_STUDIO&id=${item.id}`;
     window.open(url, '_blank');
   };
 
   const filteredItems = items.filter(item => {
     if (view === 'STARRED' && !item.starred) return false;
-    if (view === 'SIGN' && item.type !== 'doc') return false;
+    if (view === 'TASKS' && item.type !== 'doc') return false; 
     if (view === 'MY_DRIVE' && item.location !== 'My Drive') return false;
     if (view === 'SHARED_WITH_ME' && item.location !== 'Shared with me') return false;
     return item.name.toLowerCase().includes(search.toLowerCase());
@@ -93,16 +93,88 @@ const DriveContent: React.FC<DriveContentProps> = ({ view }) => {
       case 'MY_DRIVE': return 'My drive';
       case 'SHARED_WITH_ME': return 'Shared with me';
       case 'STARRED': return 'Starred';
-      case 'SIGN': return 'Sign';
+      case 'TASKS': return 'Tasks';
       case 'ARCHIVED': return 'Archived';
       default: return 'Collaboration Drive';
     }
   };
 
-  const showLocationColumn = view !== 'MY_DRIVE' && view !== 'SHARED_WITH_ME';
+  const showLocationColumn = view !== 'MY_DRIVE' && view !== 'SHARED_WITH_ME' && view !== 'TASKS';
 
+  // Specific Task View Renderer
+  if (view === 'TASKS') {
+    return (
+      <div className="flex-1 flex flex-col min-h-0 h-full bg-[#FAFAFA] font-sans">
+        <div className="p-8 pb-4">
+          <h1 className="text-2xl font-bold text-gray-900 tracking-tight mb-4">Tasks</h1>
+        </div>
+        
+        <div className="px-8 flex-1 pb-8">
+          <div className="bg-white border border-gray-200 rounded-sm shadow-sm overflow-hidden flex flex-col">
+            {/* Custom Header from Screenshot */}
+            <div className="flex border-b border-gray-200 bg-[#F9FAFB] text-[13px] text-gray-500 font-bold">
+              <div className="flex-1 px-4 py-2.5 border-r border-gray-200 flex items-center justify-between group cursor-pointer hover:bg-gray-100/50">
+                <span>Name</span>
+                <ChevronDown size={14} className="text-gray-400" />
+              </div>
+              <div className="w-[30%] px-4 py-2.5 border-r border-gray-200 flex items-center justify-between group cursor-pointer hover:bg-gray-100/50">
+                <div className="flex items-center gap-2">
+                  <span>Status</span>
+                  <div className="flex flex-col -space-y-1.5 bg-[#BFDBFE] rounded p-0.5">
+                    <ArrowUp size={8} className="text-blue-600" />
+                    <ArrowUp size={8} className="text-blue-600 rotate-180" />
+                  </div>
+                </div>
+                <ChevronDown size={14} className="text-gray-400" />
+              </div>
+              <div className="w-[25%] px-4 py-2.5 border-r border-gray-200 flex items-center justify-between group cursor-pointer hover:bg-gray-100/50">
+                <span>Date created</span>
+                <ChevronDown size={14} className="text-gray-400" />
+              </div>
+              <div className="w-12 py-2.5 flex items-center justify-center cursor-pointer hover:bg-gray-100/50">
+                <ChevronDown size={14} className="text-gray-400" />
+              </div>
+            </div>
+
+            {/* List Content */}
+            <div className="flex-1 overflow-auto">
+              <div className="divide-y divide-gray-100">
+                {filteredItems.map((item, idx) => (
+                  <div key={item.id} className="flex items-center text-[13px] bg-white transition-none">
+                    <div className="flex-1 px-4 py-4 truncate">
+                      <a 
+                        href="#" 
+                        onClick={(e) => { e.preventDefault(); openInNewTab(item); }}
+                        className="text-[#1E40AF] hover:text-[#1D4ED8] font-medium underline decoration-[#1E40AF]/30"
+                      >
+                        {idx === 0 ? "Q4 planing testing multi-sig doc" : idx === 1 ? "Multi-sig test 09/10/2025 10:13 AM" : item.name}
+                      </a>
+                    </div>
+                    <div className="w-[30%] px-4 py-4 flex items-center gap-2 text-gray-900 font-medium">
+                      <div className="w-2 h-2 rounded-full bg-[#EA580C]" />
+                      <span>Yet to sign</span>
+                    </div>
+                    <div className="w-[25%] px-4 py-4 text-gray-700 font-medium">
+                      01/08/2026
+                    </div>
+                    <div className="w-12 py-4 flex items-center justify-center text-gray-400">
+                      <button className="p-1 hover:bg-gray-100 rounded transition-colors">
+                        <MoreVertical size={16} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Original Drive View for all other pages
   return (
-    <div className="flex-1 flex flex-col min-h-0 h-full">
+    <div className="flex-1 flex flex-col min-h-0 h-full font-sans bg-[#FAFAFA]">
       <div className="p-8 pb-4">
         <div className="flex items-center justify-between mb-2">
           <h1 className="text-2xl font-bold text-gray-900 tracking-tight">

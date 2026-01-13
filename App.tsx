@@ -19,7 +19,7 @@ const App: React.FC = () => {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const viewParam = params.get('view') as ViewType;
-    if (viewParam && ['STORAGE', 'CREATE_CUSTOM_APP', 'APP_STUDIO', 'MY_DRIVE', 'RECENT', 'STARRED', 'SIGN', 'SHARED_WITH_ME', 'ARCHIVED'].includes(viewParam)) {
+    if (viewParam && ['STORAGE', 'CREATE_CUSTOM_APP', 'APP_STUDIO', 'MY_DRIVE', 'RECENT', 'STARRED', 'TASKS', 'SHARED_WITH_ME', 'ARCHIVED'].includes(viewParam)) {
       setView(viewParam);
     }
   }, []);

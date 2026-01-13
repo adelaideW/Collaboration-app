@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   Plus, 
-  FileSignature, 
+  SquareCheck, 
   Star, 
   FolderIcon, 
   Users, 
@@ -14,11 +14,11 @@ import {
   HelpCircle,
   ExternalLink,
   ChevronRight,
-  Globe,
   Layout,
   Sparkles,
   Network,
-  Clock
+  Clock,
+  ClipboardList
 } from 'lucide-react';
 import { ViewType } from '../types';
 import { PRODUCT_APPS, getIcon } from '../constants';
@@ -59,7 +59,6 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, isCollapsed, se
       window.open(url, '_blank');
     } else {
       // For other apps, we might navigate in the current tab or also open new ones
-      // Following the user request to move UI to different tabs for links
       const url = `${window.location.origin}${window.location.pathname}?view=CREATE_CUSTOM_APP&app=${appId}`;
       window.open(url, '_blank');
     }
@@ -67,11 +66,11 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, isCollapsed, se
   };
 
   const navItems = [
+    { id: 'TASKS', label: 'Tasks', icon: 'ClipboardList' },
     { id: 'RECENT', label: 'Recent', icon: 'Clock' },
     { id: 'MY_DRIVE', label: 'My drive', icon: 'FolderIcon' },
     { id: 'SHARED_WITH_ME', label: 'Shared with me', icon: 'Users' },
     { id: 'STARRED', label: 'Starred', icon: 'Star' },
-    { id: 'SIGN', label: 'Sign', icon: 'FileSignature' },
     { id: 'ARCHIVED', label: 'Archived', icon: 'Archive' },
   ];
 
@@ -93,7 +92,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, isCollapsed, se
           {!isCollapsed && <span className="font-semibold">Add</span>}
         </button>
 
-        {/* Modal Style Dropdown - Now absolutely positioned below the button */}
+        {/* Modal Style Dropdown */}
         {isAddOpen && (
           <div 
             ref={addMenuRef}

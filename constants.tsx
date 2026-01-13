@@ -12,7 +12,8 @@ import {
   Database,
   Settings,
   FileText,
-  Network
+  Network,
+  ClipboardList
 } from 'lucide-react';
 import { ProductApp, DriveItem, StorageStat } from './types';
 
@@ -143,6 +144,7 @@ export const getIcon = (name: string, className?: string, mode: 'branded' | 'nak
     case 'Archive': return <Archive className={className} size={20} />;
     case 'Database': return <Database className={className} size={20} />;
     case 'Settings': return <Settings className={className} size={20} />;
+    case 'ClipboardList': return <ClipboardList className={className} size={20} />;
     default: return <FileText className={className} size={20} />;
   }
 };
