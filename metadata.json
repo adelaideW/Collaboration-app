@@ -1,0 +1,5 @@
+{
+  "name": "Collaboration Drive",
+  "description": "A Google Drive-inspired HRIS extension for managing custom apps, documents, APIs, reports, and workflows.",
+  "requestFramePermissions": []
+}
