@@ -18,9 +18,8 @@ const TemplatePreviewModal: React.FC<TemplatePreviewModalProps> = ({ isOpen, onC
   if (!isOpen || !template) return null;
 
   const handleCreateApp = () => {
-    // Open the App Studio in a new browser tab
-    const url = `${window.location.origin}${window.location.pathname}?view=APP_STUDIO`;
-    window.open(url, '_blank');
+    // Navigate locally to App Studio
+    setView('APP_STUDIO');
     onClose();
   };
 

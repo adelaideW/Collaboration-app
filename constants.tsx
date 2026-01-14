@@ -13,7 +13,8 @@ import {
   Settings,
   FileText,
   Network,
-  ClipboardList
+  ClipboardList,
+  Home
 } from 'lucide-react';
 import { ProductApp, DriveItem, StorageStat } from './types';
 
@@ -114,6 +115,16 @@ export const MOCK_ITEMS: DriveItem[] = [
   { id: '6', name: 'Policy Update Signature Request', owner: 'Elena Rodriguez', createdAt: 'Jan 05, 2024', lastModified: 'Feb 10, 2024', lastModifiedBy: 'Sarah Chen', location: 'Shared with me', size: '2.1 MB', starred: false, type: 'doc', status: 'Pending' },
   { id: '7', name: 'Sales Pipeline report', owner: 'Me', createdAt: 'Feb 15, 2024', lastModified: 'Feb 20, 2024', lastModifiedBy: 'Me', location: 'My Drive', size: '3.1 MB', starred: true, type: 'app' },
   { id: '8', name: 'Company Handbook 2024', owner: 'HR Team', createdAt: 'Jan 01, 2024', lastModified: 'Mar 12, 2024', lastModifiedBy: 'James Wilson', location: 'Shared with me', size: '5.4 MB', starred: false, type: 'doc' },
+  { id: '9', name: 'Global Benefits Enrollment 2026', owner: 'Me', createdAt: 'Jan 10, 2026', lastModified: 'Feb 24, 2026', lastModifiedBy: 'Elena Rodriguez', location: 'My Drive', size: '2.4 MB', starred: false, type: 'doc', status: 'Draft' },
+  { id: '10', name: 'Expense Reimbursement App', owner: 'Finance Team', createdAt: 'Dec 05, 2025', lastModified: 'Feb 23, 2026', lastModifiedBy: 'Me', location: 'Shared with me', size: '10.2 MB', starred: true, type: 'app', status: 'Running' },
+  { id: '11', name: 'API Gateway Logs', owner: 'DevOps', createdAt: 'Feb 01, 2026', lastModified: 'Feb 24, 2026', lastModifiedBy: 'DevOps', location: 'Shared with me', size: '--', starred: false, type: 'api' },
+  { id: '12', name: 'Annual Budget Report', owner: 'Me', createdAt: 'Jan 05, 2026', lastModified: 'Feb 20, 2026', lastModifiedBy: 'Me', location: 'My Drive', size: '1.5 MB', starred: true, type: 'report' },
+  { id: '13', name: 'IT Support Ticket Flow', owner: 'James Wilson', createdAt: 'Feb 12, 2026', lastModified: 'Feb 24, 2026', lastModifiedBy: 'James Wilson', location: 'Shared with me', size: '--', starred: false, type: 'workflow' },
+  { id: '14', name: 'Employee Engagement Survey', owner: 'Elena Rodriguez', createdAt: 'Feb 18, 2026', lastModified: 'Feb 24, 2026', lastModifiedBy: 'Me', location: 'Shared with me', size: '300 KB', starred: true, type: 'doc', status: 'Pending' },
+  { id: '15', name: 'Asset Allocation Tool', owner: 'Me', createdAt: 'Nov 20, 2025', lastModified: 'Feb 22, 2026', lastModifiedBy: 'Me', location: 'My Drive', size: '6.8 MB', starred: false, type: 'app' },
+  { id: '16', name: 'Internal Auth API', owner: 'Sarah Chen', createdAt: 'Oct 30, 2025', lastModified: 'Feb 15, 2026', lastModifiedBy: 'Sarah Chen', location: 'Shared with me', size: '--', starred: false, type: 'api' },
+  { id: '17', name: 'Diversity & Inclusion Report', owner: 'HR Team', createdAt: 'Jan 15, 2026', lastModified: 'Feb 19, 2026', lastModifiedBy: 'Michael Brown', location: 'Shared with me', size: '1.1 MB', starred: false, type: 'report' },
+  { id: '18', name: 'Vacation Request Workflow', owner: 'Me', createdAt: 'Feb 05, 2026', lastModified: 'Feb 24, 2026', lastModifiedBy: 'Elena Rodriguez', location: 'My Drive', size: '--', starred: true, type: 'workflow', status: 'Running' },
 ];
 
 export const STORAGE_STATS: StorageStat[] = [
@@ -136,6 +147,7 @@ export const getIcon = (name: string, className?: string, mode: 'branded' | 'nak
     case 'workflow-item': return <WorkflowAutomatorIcon className={className || "w-8 h-8"} mode={mode} />;
     
     // Lucide Fallbacks for Sidebar
+    case 'Home': return <Home className={className} size={20} />;
     case 'Clock': return <Clock className={className} size={20} />;
     case 'Star': return <Star className={className} size={20} />;
     case 'FolderIcon': return <FolderIcon className={className} size={20} />;

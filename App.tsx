@@ -10,7 +10,7 @@ import AppStudio from './components/AppStudio';
 import { ViewType } from './types';
 
 const App: React.FC = () => {
-  const [view, setView] = useState<ViewType>('MY_DRIVE');
+  const [view, setView] = useState<ViewType>('HOME');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isAIChatOpen, setIsAIChatOpen] = useState(false);
   const [aiChatQuery, setAiChatQuery] = useState<string | undefined>(undefined);
@@ -19,7 +19,7 @@ const App: React.FC = () => {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const viewParam = params.get('view') as ViewType;
-    if (viewParam && ['STORAGE', 'CREATE_CUSTOM_APP', 'APP_STUDIO', 'MY_DRIVE', 'RECENT', 'STARRED', 'TASKS', 'SHARED_WITH_ME', 'ARCHIVED'].includes(viewParam)) {
+    if (viewParam && ['HOME', 'STORAGE', 'CREATE_CUSTOM_APP', 'APP_STUDIO', 'MY_DRIVE', 'RECENT', 'STARRED', 'TASKS', 'SHARED_WITH_ME', 'ARCHIVED'].includes(viewParam)) {
       setView(viewParam);
     }
   }, []);
@@ -38,10 +38,6 @@ const App: React.FC = () => {
     switch (view) {
       case 'STORAGE':
         return <StorageView />;
-      case 'CREATE_CUSTOM_APP':
-        return <CreateCustomApp setView={setView} />;
-      case 'APP_STUDIO':
-        return <AppStudio setView={setView} />;
       case 'SETTINGS':
         return (
           <div className="flex-1 flex items-center justify-center text-gray-400 bg-[#FAFAFA]">
@@ -56,11 +52,19 @@ const App: React.FC = () => {
     }
   };
 
-  // The App Studio has its own full-screen layout
+  // Standalone workspaces for creation and studio
   if (view === 'APP_STUDIO') {
     return (
       <div className="h-screen bg-white font-sans overflow-hidden">
         <AppStudio setView={setView} />
+      </div>
+    );
+  }
+
+  if (view === 'CREATE_CUSTOM_APP') {
+    return (
+      <div className="h-screen bg-white font-sans overflow-hidden">
+        <CreateCustomApp setView={setView} />
       </div>
     );
   }

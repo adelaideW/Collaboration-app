@@ -66,11 +66,16 @@ const DriveContent: React.FC<DriveContentProps> = ({ view }) => {
 
   const filteredItems = items.filter(item => {
     if (view === 'STARRED' && !item.starred) return false;
-    if (view === 'TASKS' && item.type !== 'doc') return false; 
+    if (view === 'TASKS' && (item.type !== 'doc' || item.status === 'Signed')) return false; 
     if (view === 'MY_DRIVE' && item.location !== 'My Drive') return false;
     if (view === 'SHARED_WITH_ME' && item.location !== 'Shared with me') return false;
     return item.name.toLowerCase().includes(search.toLowerCase());
   });
+
+  // Apply sorting for RECENT and HOME based on modification date (newest first)
+  const sortedItems = (view === 'HOME' || view === 'RECENT')
+    ? [...filteredItems].sort((a, b) => new Date(b.lastModified).getTime() - new Date(a.lastModified).getTime())
+    : filteredItems;
 
   const getItemIconType = (type: string) => {
     switch(type) {
@@ -89,7 +94,8 @@ const DriveContent: React.FC<DriveContentProps> = ({ view }) => {
 
   const getTitle = () => {
     switch(view) {
-      case 'RECENT': return 'Welcome to Collaboration Drive';
+      case 'HOME': return 'Welcome to Collaboration Drive';
+      case 'RECENT': return 'Recents';
       case 'MY_DRIVE': return 'My drive';
       case 'SHARED_WITH_ME': return 'Shared with me';
       case 'STARRED': return 'Starred';
@@ -107,64 +113,67 @@ const DriveContent: React.FC<DriveContentProps> = ({ view }) => {
       <div className="flex-1 flex flex-col min-h-0 h-full bg-[#FAFAFA] font-sans">
         <div className="p-8 pb-4">
           <h1 className="text-2xl font-bold text-gray-900 tracking-tight mb-4">Tasks</h1>
+          <div className="flex items-center gap-2 text-sm">
+            <span className="font-semibold text-gray-700">Collaboration Drive</span>
+            <span className="px-2 py-0.5 rounded-full bg-gray-100 text-[10px] font-bold text-gray-500 uppercase">
+              {sortedItems.length} tasks
+            </span>
+          </div>
         </div>
         
         <div className="px-8 flex-1 pb-8">
-          <div className="bg-white border border-gray-200 rounded-sm shadow-sm overflow-hidden flex flex-col">
-            {/* Custom Header from Screenshot */}
-            <div className="flex border-b border-gray-200 bg-[#F9FAFB] text-[13px] text-gray-500 font-bold">
-              <div className="flex-1 px-4 py-2.5 border-r border-gray-200 flex items-center justify-between group cursor-pointer hover:bg-gray-100/50">
-                <span>Name</span>
-                <ChevronDown size={14} className="text-gray-400" />
-              </div>
-              <div className="w-[30%] px-4 py-2.5 border-r border-gray-200 flex items-center justify-between group cursor-pointer hover:bg-gray-100/50">
-                <div className="flex items-center gap-2">
-                  <span>Status</span>
-                  <div className="flex flex-col -space-y-1.5 bg-[#BFDBFE] rounded p-0.5">
-                    <ArrowUp size={8} className="text-blue-600" />
-                    <ArrowUp size={8} className="text-blue-600 rotate-180" />
-                  </div>
-                </div>
-                <ChevronDown size={14} className="text-gray-400" />
-              </div>
-              <div className="w-[25%] px-4 py-2.5 border-r border-gray-200 flex items-center justify-between group cursor-pointer hover:bg-gray-100/50">
-                <span>Date created</span>
-                <ChevronDown size={14} className="text-gray-400" />
-              </div>
-              <div className="w-12 py-2.5 flex items-center justify-center cursor-pointer hover:bg-gray-100/50">
-                <ChevronDown size={14} className="text-gray-400" />
-              </div>
+          <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden flex flex-col h-full">
+            {/* Table Header aligned with other views */}
+            <div className="flex border-b border-gray-100 bg-[#FAFAFA]/80 backdrop-blur-md sticky top-0 z-20 text-[11px] font-bold text-gray-400 uppercase tracking-wider">
+              <div className="flex-1 px-6 py-4">Name</div>
+              <div className="w-[200px] px-6 py-4">Status</div>
+              <div className="w-[200px] px-6 py-4">Date Created</div>
+              <div className="w-44 px-6 py-4 text-right">Actions</div>
             </div>
 
             {/* List Content */}
             <div className="flex-1 overflow-auto">
-              <div className="divide-y divide-gray-100">
-                {filteredItems.map((item, idx) => (
-                  <div key={item.id} className="flex items-center text-[13px] bg-white transition-none">
-                    <div className="flex-1 px-4 py-4 truncate">
+              <div className="divide-y divide-gray-50">
+                {sortedItems.map((item, idx) => (
+                  <div key={item.id} className="flex items-center group hover:bg-blue-50/40 transition-colors cursor-pointer">
+                    <div className="flex-1 px-6 py-4 truncate">
                       <a 
                         href="#" 
                         onClick={(e) => { e.preventDefault(); openInNewTab(item); }}
-                        className="text-[#1E40AF] hover:text-[#1D4ED8] font-medium underline decoration-[#1E40AF]/30"
+                        className="text-[14px] font-medium text-[#000000] hover:underline"
                       >
-                        {idx === 0 ? "Q4 planing testing multi-sig doc" : idx === 1 ? "Multi-sig test 09/10/2025 10:13 AM" : item.name}
+                        {item.name}
                       </a>
                     </div>
-                    <div className="w-[30%] px-4 py-4 flex items-center gap-2 text-gray-900 font-medium">
-                      <div className="w-2 h-2 rounded-full bg-[#EA580C]" />
-                      <span>Yet to sign</span>
+                    <div className="w-[200px] px-6 py-4 flex items-center gap-2">
+                      <div className={`w-2 h-2 rounded-full ${item.status === 'Signed' ? 'bg-green-500' : 'bg-[#EA580C]'}`} />
+                      <span className="text-[14px] text-gray-700 font-medium">
+                        {item.status === 'Signed' ? 'Signed' : 'Yet to sign'}
+                      </span>
                     </div>
-                    <div className="w-[25%] px-4 py-4 text-gray-700 font-medium">
-                      01/08/2026
+                    <div className="w-[200px] px-6 py-4 text-[14px] text-gray-700 font-medium">
+                      {item.createdAt}
                     </div>
-                    <div className="w-12 py-4 flex items-center justify-center text-gray-400">
-                      <button className="p-1 hover:bg-gray-100 rounded transition-colors">
+                    <div className="w-44 px-6 py-4 flex items-center justify-end gap-2 text-gray-400" onClick={(e) => e.stopPropagation()}>
+                      <button className="px-4 h-[32px] bg-[#7A005D] text-white hover:bg-[#6b0051] rounded-lg text-[12px] font-bold transition-all active:scale-95 shadow-sm whitespace-nowrap">
+                        Sign
+                      </button>
+                      <button className="flex items-center justify-center p-2 bg-white border border-gray-100 rounded-xl shadow-[0_2px_4px_rgba(0,0,0,0.02)] text-gray-800 hover:bg-gray-50 transition-all shrink-0">
                         <MoreVertical size={16} />
                       </button>
                     </div>
                   </div>
                 ))}
               </div>
+
+              {sortedItems.length === 0 && (
+                <div className="flex flex-col items-center justify-center h-64 text-gray-400">
+                  <div className="p-6 bg-gray-50 rounded-full mb-4">
+                    <Plus size={48} strokeWidth={1} />
+                  </div>
+                  <p className="text-sm font-medium">No tasks assigned to you</p>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -184,7 +193,7 @@ const DriveContent: React.FC<DriveContentProps> = ({ view }) => {
         <div className="flex items-center gap-2 text-sm">
            <span className="font-semibold text-gray-700">Collaboration Drive</span>
            <span className="px-2 py-0.5 rounded-full bg-gray-100 text-[10px] font-bold text-gray-500 uppercase">
-             {filteredItems.length} items
+             {sortedItems.length} items
            </span>
            <Info size={14} className="text-gray-400" />
         </div>
@@ -283,7 +292,7 @@ const DriveContent: React.FC<DriveContentProps> = ({ view }) => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {filteredItems.map(item => (
+                {sortedItems.map(item => (
                   <tr key={item.id} className="group hover:bg-blue-50/40 transition-colors cursor-pointer" onClick={() => openInNewTab(item)}>
                     <td className="px-6 py-4">
                       <div className="flex items-center justify-between gap-3">
@@ -388,7 +397,7 @@ const DriveContent: React.FC<DriveContentProps> = ({ view }) => {
               </tbody>
             </table>
 
-            {filteredItems.length === 0 && (
+            {sortedItems.length === 0 && (
               <div className="flex flex-col items-center justify-center h-64 text-gray-400">
                 <div className="p-6 bg-gray-50 rounded-full mb-4">
                   <FolderIcon size={48} strokeWidth={1} />

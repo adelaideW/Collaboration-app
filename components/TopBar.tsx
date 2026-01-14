@@ -116,6 +116,16 @@ const TopBar: React.FC<TopBarProps> = ({ onAIChatOpen }) => {
       ]
     },
     {
+      title: 'Apps',
+      items: [
+        { icon: <LayoutGrid size={19} />, label: 'Custom app' },
+        { icon: <FileText size={19} />, label: 'Documents' },
+        { icon: <GitBranch size={19} />, label: 'Developer tools' },
+        { icon: <BarChart size={19} />, label: 'Reports' },
+        { icon: <Zap size={19} />, label: 'Workflow automator' },
+      ]
+    },
+    {
       title: 'Platform',
       items: [
         { 

@@ -1,5 +1,5 @@
 
-export type ViewType = 'RECENT' | 'MY_DRIVE' | 'SHARED_WITH_ME' | 'SHARED_DRIVES' | 'STARRED' | 'TASKS' | 'ARCHIVED' | 'STORAGE' | 'SETTINGS' | 'CREATE_CUSTOM_APP' | 'APP_STUDIO';
+export type ViewType = 'HOME' | 'RECENT' | 'MY_DRIVE' | 'SHARED_WITH_ME' | 'SHARED_DRIVES' | 'STARRED' | 'TASKS' | 'ARCHIVED' | 'STORAGE' | 'SETTINGS' | 'CREATE_CUSTOM_APP' | 'APP_STUDIO';
 
 export interface ProductApp {
   id: string;

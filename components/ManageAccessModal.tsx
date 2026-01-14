@@ -45,6 +45,8 @@ const ManageAccessModal: React.FC<ManageAccessModalProps> = ({ isOpen, onClose, 
         initialList.push({ id: 'collab-row', name: 'Reporting Analysts', type: 'group', previewText: 'Preview 12 people', role: 'Collaborator' });
       } else if (item.type === 'api') {
         initialList.push({ id: 'runner-row', name: 'Service Accounts', type: 'group', previewText: 'Preview 3 people', role: 'Runner' });
+      } else if (item.type === 'workflow') {
+        initialList.push({ id: 'collab-row', name: 'Workflow Designers', type: 'group', previewText: 'Preview 8 people', role: 'Collaborator' });
       }
 
       setAccessList(initialList);
@@ -107,10 +109,16 @@ const ManageAccessModal: React.FC<ManageAccessModalProps> = ({ isOpen, onClose, 
   };
 
   const getAvailableRoles = (currentRole: Role): Role[] => {
-    const baseRoles: Role[] = ['Viewer', 'Editor'];
-    if (currentRole === 'Collaborator') return ['Viewer', 'Collaborator', 'Editor'];
-    if (currentRole === 'Runner') return ['Viewer', 'Runner', 'Editor'];
-    return baseRoles;
+    // For Developer Tools (API), provide Editor, Viewer, and Runner in specific order.
+    if (item.type === 'api' || currentRole === 'Runner') {
+      return ['Editor', 'Viewer', 'Runner'];
+    }
+    // For Workflows and Reports, provide Editor, Viewer, and Collaborator.
+    if (item.type === 'workflow' || item.type === 'report' || currentRole === 'Collaborator') {
+      return ['Editor', 'Viewer', 'Collaborator'];
+    }
+    // Default base roles.
+    return ['Editor', 'Viewer'];
   };
 
   return (

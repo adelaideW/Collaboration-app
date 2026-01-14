@@ -2,26 +2,16 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   Plus, 
-  SquareCheck, 
-  Star, 
-  FolderIcon, 
-  Users, 
-  Archive, 
-  Database, 
-  Settings,
-  Search,
-  ChevronDown,
-  HelpCircle,
-  ExternalLink,
-  ChevronRight,
-  Layout,
-  Sparkles,
-  Network,
-  Clock,
-  ClipboardList
+  Search, 
+  ChevronDown, 
+  HelpCircle, 
+  ExternalLink, 
+  ChevronRight, 
+  Layout, 
+  Sparkles
 } from 'lucide-react';
 import { ViewType } from '../types';
-import { PRODUCT_APPS, getIcon } from '../constants';
+import { PRODUCT_APPS, getIcon, MOCK_ITEMS } from '../constants';
 
 interface SidebarProps {
   currentView: ViewType;
@@ -36,6 +26,9 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, isCollapsed, se
   const [searchQuery, setSearchQuery] = useState('');
   const addMenuRef = useRef<HTMLDivElement>(null);
   const addButtonRef = useRef<HTMLButtonElement>(null);
+
+  // Calculate task count based on current mock items that are docs and not yet signed
+  const taskCount = MOCK_ITEMS.filter(item => item.type === 'doc' && item.status !== 'Signed').length;
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -54,29 +47,34 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, isCollapsed, se
 
   const handleAppClick = (appId: string) => {
     if (appId === 'custom-app') {
-      // Open the creation workspace in a new tab
       const url = `${window.location.origin}${window.location.pathname}?view=CREATE_CUSTOM_APP`;
       window.open(url, '_blank');
     } else {
-      // For other apps, we might navigate in the current tab or also open new ones
       const url = `${window.location.origin}${window.location.pathname}?view=CREATE_CUSTOM_APP&app=${appId}`;
       window.open(url, '_blank');
     }
     setIsAddOpen(false);
   };
 
-  const navItems = [
-    { id: 'TASKS', label: 'Tasks', icon: 'ClipboardList' },
-    { id: 'RECENT', label: 'Recent', icon: 'Clock' },
-    { id: 'MY_DRIVE', label: 'My drive', icon: 'FolderIcon' },
-    { id: 'SHARED_WITH_ME', label: 'Shared with me', icon: 'Users' },
-    { id: 'STARRED', label: 'Starred', icon: 'Star' },
-    { id: 'ARCHIVED', label: 'Archived', icon: 'Archive' },
-  ];
-
-  const secondaryItems = [
-    { id: 'STORAGE', label: 'Storage', icon: 'Database' },
-    { id: 'SETTINGS', label: 'Settings', icon: 'Settings' },
+  // Groups for navigation based on request
+  const navGroups = [
+    [
+      { id: 'TASKS', label: 'Tasks', icon: 'ClipboardList' },
+      { id: 'HOME', label: 'Home', icon: 'Home' },
+    ],
+    [
+      { id: 'MY_DRIVE', label: 'My drive', icon: 'FolderIcon' },
+      { id: 'SHARED_WITH_ME', label: 'Shared with me', icon: 'Users' },
+    ],
+    [
+      { id: 'RECENT', label: 'Recents', icon: 'Clock' },
+      { id: 'STARRED', label: 'Star', icon: 'Star' },
+    ],
+    [
+      { id: 'ARCHIVED', label: 'Archived', icon: 'Archive' },
+      { id: 'SETTINGS', label: 'Settings', icon: 'Settings' },
+      { id: 'STORAGE', label: 'Storage', icon: 'Database' },
+    ]
   ];
 
   return (
@@ -166,48 +164,42 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, isCollapsed, se
       </div>
 
       {/* Main Nav */}
-      <nav className="flex-1 px-2 space-y-1">
-        {navItems.map(item => (
-          <React.Fragment key={item.id}>
-            {item.id === 'STARRED' && (
+      <nav className="flex-1 px-2 space-y-1 overflow-y-auto custom-scrollbar">
+        {navGroups.map((group, gIdx) => (
+          <React.Fragment key={gIdx}>
+            {gIdx > 0 && (
               <div className="my-2 border-t border-gray-100 mx-3"></div>
             )}
-            <button
-              onClick={() => setView(item.id as ViewType)}
-              className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'gap-3 px-3'} py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                currentView === item.id 
-                  ? 'bg-gray-100 text-[#7A005D]' 
-                  : 'text-gray-600 hover:bg-gray-50'
-              }`}
-              title={isCollapsed ? item.label : undefined}
-            >
-              {getIcon(item.icon, currentView === item.id ? "text-[#7A005D]" : "text-gray-400")}
-              {!isCollapsed && <span>{item.label}</span>}
-            </button>
+            <div className="space-y-1">
+              {group.map(item => (
+                <button
+                  key={item.id}
+                  onClick={() => setView(item.id as ViewType)}
+                  className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'gap-3 px-3'} py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                    currentView === item.id 
+                      ? 'bg-gray-100 text-[#7A005D]' 
+                      : 'text-gray-600 hover:bg-gray-50'
+                  }`}
+                  title={isCollapsed ? item.label : undefined}
+                >
+                  <div className="relative">
+                    {getIcon(item.icon, currentView === item.id ? "text-[#7A005D]" : "text-gray-400")}
+                    {item.id === 'TASKS' && taskCount > 0 && (
+                      <span className="absolute -top-1.5 -right-1.5 bg-red-600 text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center border border-white">
+                        {taskCount}
+                      </span>
+                    )}
+                  </div>
+                  {!isCollapsed && <span>{item.label}</span>}
+                </button>
+              ))}
+            </div>
           </React.Fragment>
-        ))}
-
-        <div className="my-4 border-t border-gray-100 mx-3"></div>
-
-        {secondaryItems.map(item => (
-          <button
-            key={item.id}
-            onClick={() => setView(item.id as ViewType)}
-            className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'gap-3 px-3'} py-2.5 rounded-lg text-sm font-medium transition-colors ${
-              currentView === item.id 
-                ? 'bg-gray-100 text-[#7A005D]' 
-                : 'text-gray-600 hover:bg-gray-50'
-            }`}
-            title={isCollapsed ? item.label : undefined}
-          >
-            {getIcon(item.icon, currentView === item.id ? "text-[#7A005D]" : "text-gray-400")}
-            {!isCollapsed && <span>{item.label}</span>}
-          </button>
         ))}
       </nav>
 
       {/* Footer Nav */}
-      <div className="mt-auto p-2 border-t border-gray-100 space-y-1">
+      <div className="mt-auto p-2 border-t border-gray-100 space-y-1 shrink-0">
         <button className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'justify-between px-2'} py-2 text-xs text-gray-500 hover:bg-gray-50 rounded-md transition-colors`}>
           <div className="flex items-center gap-3">
             <HelpCircle size={18} />
@@ -234,6 +226,19 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, isCollapsed, se
            {!isCollapsed && <span>Collapse panel</span>}
         </button>
       </div>
+
+      <style>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: #f1f5f9;
+          border-radius: 10px;
+        }
+      `}</style>
     </aside>
   );
 };
