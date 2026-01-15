@@ -1,280 +1,283 @@
 
 import React, { useState } from 'react';
-import { X, Sparkles, Layout, Ticket, Award, Users, Monitor, Truck, Headphones, BarChart, DollarSign, Info, ArrowUp, Maximize2, ExternalLink } from 'lucide-react';
+import { X, Layout, Sparkles, Search, ChevronRight, FileText, Check, Ticket, Award, Users, Monitor, Truck, Headphones, BarChart3, DollarSign, MoreVertical, Info, Maximize2 } from 'lucide-react';
+import { ViewType } from '../types';
 
 interface TemplateSelectionModalProps {
   isOpen: boolean;
   onClose: () => void;
+  setView: (view: ViewType) => void;
+  onApplyTemplate?: (name: string, state: string) => void;
+  mode?: 'doc' | 'app';
 }
 
-type ModalView = 'TEMPLATES' | 'GEMINI';
+const APP_TEMPLATES = [
+  { id: 'hr-ticketing', name: 'HR Ticketing', icon: <Ticket size={12} />, bannerIcon: <Ticket size={18} /> },
+  { id: 'license-mgmt', name: 'License Management', icon: <Award size={12} />, bannerIcon: <Award size={18} /> },
+  { id: 'skill-tracker', name: 'Skill Tracker', icon: <Users size={12} />, bannerIcon: <Users size={18} /> },
+  { id: 'it-asset', name: 'IT Asset Manager', icon: <Monitor size={12} />, bannerIcon: <Monitor size={18} /> },
+  { id: 'fleet', name: 'Fleet Management', icon: <Truck size={12} />, bannerIcon: <Truck size={18} /> },
+  { id: 'customer-support', name: 'Customer Support', icon: <Headphones size={12} />, bannerIcon: <Headphones size={18} /> },
+  { id: 'project-dashboard', name: 'Project Dashboard', icon: <BarChart3 size={12} />, bannerIcon: <BarChart3 size={18} /> },
+  { id: 'sales-crm', name: 'Sales CRM', icon: <DollarSign size={12} />, bannerIcon: <DollarSign size={18} /> },
+];
 
-const TemplateSelectionModal: React.FC<TemplateSelectionModalProps> = ({ isOpen, onClose }) => {
-  const [activeView, setActiveView] = useState<ModalView>('TEMPLATES');
-  const [promptValue, setPromptValue] = useState('');
+const AI_SUGGESTIONS = [
+  {
+    id: 'onboarding',
+    description: "Employee onboarding guide that highlights employee perks",
+    title: "Onboarding guide",
+    image: "https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&q=80&w=400&h=200",
+  },
+  {
+    id: 'newsletter',
+    description: "Newsletter that highlights travel destinations with eye catching...",
+    title: "Newsletter name",
+    image: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&q=80&w=400&h=200",
+  },
+  {
+    id: 'matcha',
+    description: "Planning document to launch new strawberry and matcha...",
+    title: "Matcha fusion launch plan",
+    image: null,
+  }
+];
 
-  if (!isOpen) return null;
-
-  const templates = [
-    { id: '1', name: 'HR Ticketing', icon: <Ticket size={18} />, bannerColor: 'bg-[#3d2b2f]', selected: true, type: 'app', bannerImg: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=200' },
-    { id: '2', name: 'License Management', icon: <Award size={18} />, bannerColor: 'bg-[#3d2b2f]', type: 'app', bannerImg: 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&q=80&w=200' },
-    { id: '3', name: 'Skill Tracker', icon: <Users size={18} />, bannerColor: 'bg-[#3d2b2f]', type: 'app', bannerImg: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&q=80&w=200' },
-    { id: '4', name: 'IT Asset Manager', icon: <Monitor size={18} />, bannerColor: 'bg-[#3d2b2f]', type: 'app', bannerImg: 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&q=80&w=200' },
-    { id: '5', name: 'Fleet Management', icon: <Truck size={18} />, bannerColor: 'bg-[#3d2b2f]', type: 'app', bannerImg: 'https://images.unsplash.com/photo-1519003722824-194d4455a60c?auto=format&fit=crop&q=80&w=200' },
-    { id: '6', name: 'Customer Support', icon: <Headphones size={18} />, bannerColor: 'bg-[#3d2b2f]', type: 'app', bannerImg: 'https://images.unsplash.com/photo-1521791136064-7986c29596dd?auto=format&fit=crop&q=80&w=200' },
-    { id: '7', name: 'Project Dashboard', icon: <BarChart size={18} />, bannerColor: 'bg-[#3d2b2f]', type: 'app', bannerImg: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&q=80&w=200' },
-    { id: '8', name: 'Sales CRM', icon: <DollarSign size={18} />, bannerColor: 'bg-[#3d2b2f]', type: 'app', bannerImg: 'https://images.unsplash.com/photo-1552581234-26160f608093?auto=format&fit=crop&q=80&w=200' },
-  ];
-
-  const suggestions = [
-    {
-      title: 'Employee onboarding guide that highlights employee perks',
-      img: 'https://images.unsplash.com/photo-1497215728101-856f4ea42174?auto=format&fit=crop&q=80&w=400',
-      label: 'Onboarding guide'
-    },
-    {
-      title: 'Newsletter that highlights travel destinations with eye catching...',
-      img: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&q=80&w=400',
-      label: 'Newsletter name'
-    },
-    {
-      title: 'Planning document to launch new strawberry and matcha...',
-      img: 'https://images.unsplash.com/photo-1571477107123-28c037305963?auto=format&fit=crop&q=80&w=400',
-      label: 'Matcha fusion launch plan'
-    }
-  ];
-
-  const handleOpenTemplate = (templateId: string) => {
-    const url = `${window.location.origin}${window.location.pathname}?view=APP_STUDIO&template=${templateId}`;
-    window.open(url, '_blank');
-    onClose();
-  };
-
-  const handleCreateAIApp = () => {
-    if (!promptValue.trim()) return;
-    const url = `${window.location.origin}${window.location.pathname}?view=APP_STUDIO&prompt=${encodeURIComponent(promptValue)}`;
-    window.open(url, '_blank');
-    onClose();
-  };
-
-  const renderAppPreview = (template: any) => {
-    return (
-      <div className="h-full bg-white flex flex-col">
-        <div className="px-2 py-1.5 flex items-center justify-between border-b border-gray-100 bg-gray-50/50">
-          <div className="flex items-center gap-1.5">
-            <div className="w-4 h-4 rounded bg-[#3d2b2f] flex items-center justify-center text-[#ffb800]">
-              {React.cloneElement(template.icon as React.ReactElement, { size: 10 })}
-            </div>
-            <div className="flex flex-col">
-              <span className="text-[6px] font-bold text-gray-900 leading-none">{template.name}</span>
-              <span className="text-[4px] text-gray-400 leading-none mt-0.5">Custom App</span>
-            </div>
-          </div>
-          <div className="flex gap-0.5">
-            <div className="w-4 h-1.5 bg-gray-200 rounded-[2px]"></div>
-            <div className="w-4 h-1.5 bg-gray-200 rounded-[2px]"></div>
-          </div>
+const TemplateMockupCard = ({ name, icon, bannerIcon }: { name: string, icon: React.ReactNode, bannerIcon: React.ReactNode }) => (
+  <div className="w-full h-full bg-white flex flex-col border border-gray-100 shadow-sm">
+    <div className="px-2 py-1.5 flex items-center justify-between border-b border-gray-50 scale-[0.8] origin-left">
+      <div className="flex items-center gap-1.5">
+        <div className="w-5 h-5 rounded-[4px] bg-[#3d2b2f] flex items-center justify-center text-[#ffb800]">
+          {icon}
         </div>
-        <div className="px-2 py-1 flex gap-2 border-b border-gray-50">
-          <div className="h-1 w-10 bg-[#3d2b2f] rounded-full"></div>
-          <div className="h-1 w-8 bg-gray-100 rounded-full"></div>
-        </div>
-        <div className="p-2">
-          <div className={`${template.bannerColor} rounded-lg h-24 relative overflow-hidden flex items-center shadow-inner`}>
-             <div className="absolute left-0 inset-y-0 w-1/4 opacity-40">
-                <img src={template.bannerImg} className="h-full w-full object-cover" alt="" />
-             </div>
-             <div className="flex-1 flex flex-col items-center justify-center relative z-10 px-4">
-                <div className="w-6 h-6 rounded-full bg-[#ffb800] flex items-center justify-center mb-1 ring-2 ring-white/10">
-                   {React.cloneElement(template.icon as React.ReactElement, { size: 14, className: "text-[#3d2b2f]" })}
-                </div>
-                <div className="text-[9px] font-bold text-white tracking-tight">{template.name}</div>
-                <div className="text-[4px] text-gray-300 mt-0.5 text-center max-w-[80%] leading-tight">
-                   Streamline processes, manage tracking, and ensure compliance effortlessly across the organization.
-                </div>
-             </div>
-             <div className="absolute right-0 inset-y-0 w-1/4 opacity-40" style={{ clipPath: 'polygon(20% 0%, 100% 0%, 100% 100%, 0% 100%)' }}>
-                <img src={template.bannerImg} className="h-full w-full object-cover" alt="" />
-             </div>
-          </div>
-        </div>
-        <div className="px-2 flex-1 space-y-2 mt-1">
-          <div className="flex items-center justify-between">
-            <div className="h-2 w-16 bg-gray-100 rounded"></div>
-            <div className="flex gap-1">
-              <div className="h-3 w-8 bg-gray-50 border border-gray-100 rounded"></div>
-              <div className="h-3 w-12 bg-[#3d2b2f] rounded"></div>
-            </div>
-          </div>
-          <div className="space-y-1">
-            {[1, 2, 3].map(i => (
-              <div key={i} className="flex gap-2 p-1 border-b border-gray-50 items-center">
-                <div className="w-3 h-3 rounded bg-gray-100"></div>
-                <div className="h-1.5 w-1/3 bg-gray-100 rounded"></div>
-                <div className="h-1.5 w-1/4 bg-blue-50 rounded ml-auto"></div>
-                <div className="h-1.5 w-12 bg-gray-50 rounded"></div>
-              </div>
-            ))}
-          </div>
+        <div className="flex flex-col">
+          <span className="text-[10px] font-bold text-gray-900 leading-none">{name}</span>
+          <span className="text-[6px] text-gray-400 leading-none mt-0.5">Custom App</span>
         </div>
       </div>
-    );
-  };
-
-  const renderGeminiView = () => (
-    <div className="flex-1 flex flex-col min-h-0 animate-in fade-in duration-300">
-      <div className="px-10 pt-8 pb-4 flex items-center justify-between shrink-0">
-        <h3 className="text-[16px] font-medium text-gray-500">Rippling AI</h3>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 bg-[#f0f4f9] px-3 py-1.5 rounded-full">
-            <Info size={16} className="text-gray-600" />
-            <span className="text-[13px] font-medium text-gray-700">Preview. <a href="#" className="text-blue-600 hover:underline">Learn more</a></span>
-          </div>
-          <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors">
-            <X size={24} strokeWidth={1.5} />
-          </button>
-        </div>
+      <div className="flex gap-1">
+        <div className="w-6 h-1.5 bg-gray-100 rounded-full"></div>
+        <div className="w-4 h-1.5 bg-gray-100 rounded-full"></div>
       </div>
-
-      <div className="flex-1 px-10 pt-4 flex flex-col overflow-y-auto custom-scrollbar pb-10">
-        <div className="mb-10">
-          <h1 className="text-[48px] font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-purple-500 to-indigo-400 leading-tight">
-            Hi Harry,
-          </h1>
-          <h1 className="text-[48px] font-bold text-gray-500 leading-tight">
-            What do you need help with?
-          </h1>
+    </div>
+    <div className="px-2 pb-2">
+      <div className="w-full h-[60px] bg-[#3d2b2f] rounded-lg relative overflow-hidden flex flex-col items-center justify-center p-2 text-center">
+        <div className="w-8 h-8 bg-[#ffb800] rounded-lg flex items-center justify-center text-[#3d2b2f] mb-1">
+          {bannerIcon}
         </div>
-
-        <div className="grid grid-cols-3 gap-6 mb-12">
-          {suggestions.map((item, idx) => (
-            <div 
-              key={idx} 
-              onClick={() => {
-                setPromptValue(item.title);
-                handleCreateAIApp();
-              }}
-              className="bg-[#f0f4f9] rounded-[24px] p-6 flex flex-col hover:bg-[#e6ebf1] transition-colors cursor-pointer group"
-            >
-              <p className="text-[15px] font-medium text-gray-700 mb-6 leading-relaxed">
-                {item.title}
-              </p>
-              <div className="relative mt-auto aspect-[16/9] rounded-xl overflow-hidden shadow-lg">
-                <img src={item.img} className="w-full h-full object-cover" alt="" />
-                <div className="absolute inset-0 bg-black/5"></div>
-                <div className="absolute inset-0 flex items-center justify-center p-4">
-                  <div className="bg-white rounded-lg shadow-xl w-full p-3 border border-gray-100 animate-in fade-in zoom-in-95 duration-500">
-                    <div className="h-2 w-1/3 bg-gray-100 rounded mb-2"></div>
-                    <div className="text-[10px] font-bold text-gray-900 leading-tight">{item.label}</div>
-                    <div className="mt-2 space-y-1">
-                      <div className="h-1 w-full bg-gray-50 rounded"></div>
-                      <div className="h-1 w-full bg-gray-50 rounded"></div>
-                      <div className="h-1 w-2/3 bg-gray-50 rounded"></div>
-                    </div>
-                  </div>
-                </div>
-                {idx === 1 && (
-                  <div className="absolute bottom-2 right-2 p-1.5 bg-white rounded-lg shadow-md">
-                    <Maximize2 size={12} className="text-gray-500" />
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
+        <span className="text-white text-[9px] font-bold tracking-tight">{name}</span>
+        <span className="text-white/40 text-[5px] leading-tight max-w-[80%]">Streamline processes, manage tracking, and ensure compliance effortlessly.</span>
+      </div>
+    </div>
+    <div className="flex-1 px-3 space-y-2 pb-4">
+      <div className="flex items-center justify-between">
+        <div className="w-16 h-4 bg-gray-50 rounded border border-gray-100"></div>
+        <div className="w-12 h-4 bg-[#3d2b2f] rounded"></div>
+      </div>
+      <div className="space-y-1.5 pt-2">
+        <div className="flex items-center gap-2">
+           <div className="w-2 h-2 rounded-full bg-gray-100"></div>
+           <div className="w-full h-2 bg-gray-50 rounded-full"></div>
         </div>
-
-        <div className="mt-auto max-w-4xl mx-auto w-full mb-4">
-          <div className="relative bg-[#f0f4f9] rounded-[40px] px-8 py-6 shadow-[0_2px_15px_rgba(0,0,0,0.04)] focus-within:ring-2 focus-within:ring-blue-100 transition-all flex items-center gap-4">
-            <textarea
-              rows={1}
-              placeholder="Describe the app you want to create."
-              className="flex-1 bg-transparent text-[16px] text-gray-800 placeholder:text-gray-500 outline-none resize-none leading-normal"
-              value={promptValue}
-              onChange={(e) => setPromptValue(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleCreateAIApp()}
-            />
-            <button 
-              onClick={handleCreateAIApp}
-              disabled={!promptValue.trim()}
-              className={`px-6 py-2 rounded-full font-bold text-[14px] transition-all whitespace-nowrap ${
-                promptValue.trim() ? 'bg-[#c2e7ff] text-[#001d35] hover:bg-[#b3d9f0]' : 'bg-[#dde3ea] text-gray-400'
-              }`}
-            >
-              Create
-            </button>
-          </div>
-          <div className="text-center text-[12px] text-gray-500 mt-6 px-10 leading-relaxed space-y-0.5">
-            <p>Rippling AI can make mistakes.</p>
-            <p>Check important info.</p>
-          </div>
+        <div className="flex items-center gap-2">
+           <div className="w-2 h-2 rounded-full bg-gray-100"></div>
+           <div className="w-full h-2 bg-gray-50 rounded-full"></div>
+        </div>
+        <div className="flex items-center gap-2">
+           <div className="w-2 h-2 rounded-full bg-gray-100"></div>
+           <div className="w-full h-2 bg-gray-50 rounded-full"></div>
         </div>
       </div>
     </div>
-  );
+  </div>
+);
+
+const AISuggestionCard = ({ description, title, image }: { description: string, title: string, image: string | null }) => (
+  <div className="flex flex-col gap-5 bg-transparent rounded-[24px] p-2 hover:bg-[#fdf2f8]/40 transition-all cursor-pointer group">
+    <p className="text-[14px] font-bold text-[#475569] leading-snug px-2">
+      {description}
+    </p>
+    <div className="relative rounded-[24px] overflow-hidden border border-gray-100 bg-white aspect-[1.3/1] shadow-sm">
+      {image ? (
+        <div className="w-full h-full relative">
+          <img src={image} className="w-full h-full object-cover grayscale-[0.2] group-hover:grayscale-0 transition-all duration-500" alt="" />
+          <div className="absolute inset-x-3 bottom-3 bg-white/95 backdrop-blur rounded-xl p-3 shadow-sm border border-white/20">
+             <div className="w-10 h-1.5 bg-gray-100 rounded-full mb-1.5"></div>
+             <span className="text-[11px] font-bold text-gray-900 block truncate">{title}</span>
+             <div className="mt-1 space-y-0.5 opacity-40">
+               <div className="w-full h-0.5 bg-gray-300 rounded-full"></div>
+               <div className="w-3/4 h-0.5 bg-gray-300 rounded-full"></div>
+             </div>
+          </div>
+        </div>
+      ) : (
+        <div className="w-full h-full bg-[#f8fafc] flex items-center justify-center p-4">
+           <div className="w-full h-full bg-white rounded-xl shadow-sm p-4 relative flex flex-col gap-2">
+             <div className="w-12 h-2.5 bg-gray-50 rounded-full mb-1"></div>
+             <span className="text-[11px] font-bold text-gray-900 block">{title}</span>
+             <div className="space-y-1.5 mt-2 opacity-30">
+               <div className="w-full h-0.5 bg-gray-400 rounded-full"></div>
+               <div className="w-full h-0.5 bg-gray-400 rounded-full"></div>
+               <div className="w-2/3 h-0.5 bg-gray-400 rounded-full"></div>
+             </div>
+           </div>
+        </div>
+      )}
+    </div>
+  </div>
+);
+
+const TemplateSelectionModal: React.FC<TemplateSelectionModalProps> = ({ isOpen, onClose, setView, onApplyTemplate, mode = 'doc' }) => {
+  const [activeTab, setActiveTab] = useState<'help' | 'templates'>('help');
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [aiInputValue, setAiInputValue] = useState('');
+
+  if (!isOpen) return null;
+
+  const templates = mode === 'app' ? APP_TEMPLATES : APP_TEMPLATES;
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-sm animate-in fade-in duration-300">
-      <div className="bg-[#fcfcfc] rounded-[32px] shadow-2xl w-full max-w-[1100px] h-[780px] overflow-hidden flex animate-in zoom-in-95 duration-300">
-        <div className="w-[140px] bg-white border-r border-gray-100 flex flex-col items-center pt-24 gap-6 shrink-0">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-sm animate-in fade-in duration-300 p-8">
+      <div className="bg-white rounded-[40px] shadow-2xl w-full max-w-[1100px] h-[780px] overflow-hidden flex animate-in zoom-in-95 duration-200">
+        
+        {/* Sidebar */}
+        <div className="w-[120px] bg-white border-r border-gray-50 flex flex-col items-center py-12 gap-10 shrink-0">
           <button 
-            onClick={() => setActiveView('GEMINI')}
-            className="flex flex-col items-center gap-2 group"
+            onClick={() => setActiveTab('help')}
+            className={`flex flex-col items-center gap-2 group transition-all ${activeTab === 'help' ? 'text-[#7A005D]' : 'text-gray-400 hover:text-gray-600'}`}
           >
-            <div className={`w-12 h-12 flex items-center justify-center rounded-2xl transition-all ${activeView === 'GEMINI' ? 'bg-[#c2e7ff] text-[#001d35] shadow-sm' : 'text-gray-400 hover:bg-gray-100'}`}>
-              <Sparkles size={24} />
+            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${activeTab === 'help' ? 'bg-[#fdf2f8] shadow-sm text-[#7A005D]' : 'bg-transparent group-hover:bg-gray-50'}`}>
+              <Sparkles size={24} className={activeTab === 'help' ? 'fill-[#7A005D]/20' : ''} />
             </div>
-            <span className={`text-[12px] font-bold transition-colors ${activeView === 'GEMINI' ? 'text-[#001d35]' : 'text-gray-400 group-hover:text-gray-600'}`}>Help me create</span>
+            <span className="text-[11px] font-bold text-center px-2">Help me create</span>
           </button>
-          
+
           <button 
-            onClick={() => setActiveView('TEMPLATES')}
-            className="flex flex-col items-center gap-2 group"
+            onClick={() => setActiveTab('templates')}
+            className={`flex flex-col items-center gap-2 group transition-all ${activeTab === 'templates' ? 'text-[#7A005D]' : 'text-gray-400 hover:text-gray-600'}`}
           >
-            <div className={`w-12 h-10 rounded-2xl flex items-center justify-center transition-all ${activeView === 'TEMPLATES' ? 'bg-[#e3effd] text-[#0b57d0] shadow-sm' : 'text-gray-400 hover:bg-gray-100'}`}>
+            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${activeTab === 'templates' ? 'bg-[#fdf2f8] shadow-sm text-[#7A005D]' : 'bg-transparent group-hover:bg-gray-50'}`}>
               <Layout size={24} />
             </div>
-            <span className={`text-[12px] font-bold transition-colors ${activeView === 'TEMPLATES' ? 'text-[#0b57d0]' : 'text-gray-400 group-hover:text-gray-600'}`}>Templates</span>
+            <span className="text-[11px] font-bold text-center px-2">Templates</span>
           </button>
         </div>
 
-        {activeView === 'GEMINI' ? (
-          renderGeminiView()
-        ) : (
-          <div className="flex-1 flex flex-col min-w-0 animate-in fade-in duration-300">
-            <div className="px-10 py-8 flex items-center justify-between shrink-0">
-              <h2 className="text-[26px] font-bold text-gray-900 tracking-tight">Select a template</h2>
-              <button 
-                onClick={onClose}
-                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
-              >
-                <X size={24} strokeWidth={1.5} />
-              </button>
-            </div>
-
-            <div className="flex-1 overflow-y-auto px-10 pb-10 custom-scrollbar">
-              <div className="grid grid-cols-4 gap-x-6 gap-y-10">
-                {templates.map((template) => (
-                  <div key={template.id} className="flex flex-col cursor-pointer group" onClick={() => handleOpenTemplate(template.id)}>
-                    <div className={`
-                      aspect-[3/4.2] rounded-[20px] border overflow-hidden transition-all duration-300 relative
-                      ${template.selected 
-                        ? 'ring-4 ring-[#0b57d0] border-[#0b57d0] shadow-2xl scale-[1.02]' 
-                        : 'border-gray-200 hover:border-gray-300 hover:shadow-xl hover:-translate-y-1'
-                      }
-                      bg-white
-                    `}>
-                      {renderAppPreview(template)}
-                      <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
-                    </div>
-                    <span className={`mt-4 text-[15px] font-medium text-center transition-colors ${template.selected ? 'text-[#0b57d0] font-bold' : 'text-gray-700 group-hover:text-black'}`}>
-                      {template.name}
-                    </span>
-                  </div>
-                ))}
-              </div>
+        {/* Content Area */}
+        <div className="flex-1 flex flex-col min-w-0 bg-white">
+          <div className="px-12 pt-8 pb-4 flex items-center justify-between shrink-0">
+            <span className="text-[14px] text-gray-400 font-medium">Rippling AI</span>
+            <div className="flex items-center gap-4">
+               <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#f8fafc] rounded-lg text-[13px] font-bold text-gray-600 cursor-pointer hover:bg-gray-200 transition-colors">
+                  <Info size={16} />
+                  <span>Preview. <span className="text-[#7A005D]">Learn more</span></span>
+               </div>
+               <button 
+                 onClick={onClose}
+                 className="p-1 hover:bg-gray-100 rounded-full transition-colors text-gray-400"
+               >
+                 <X size={28} />
+               </button>
             </div>
           </div>
-        )}
+
+          <div className="flex-1 overflow-y-auto px-12 pb-16 custom-scrollbar">
+            {activeTab === 'templates' ? (
+              <div className="pt-4">
+                <h2 className="text-[32px] font-bold text-gray-900 tracking-tight mb-8">Select a template</h2>
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
+                  {templates.map((template) => (
+                    <div key={template.id} className="flex flex-col gap-4 group cursor-pointer" onClick={() => setSelectedId(template.id)}>
+                      <div className={`aspect-[3.5/4] rounded-[24px] overflow-hidden transition-all duration-300 ${
+                        selectedId === template.id 
+                          ? 'border-[4px] border-[#7A005D] ring-[12px] ring-[#7A005D]/5' 
+                          : 'border border-gray-100 hover:border-gray-200 hover:shadow-lg'
+                      }`}>
+                        <TemplateMockupCard 
+                          name={template.name} 
+                          icon={(template as any).icon} 
+                          bannerIcon={(template as any).bannerIcon} 
+                        />
+                      </div>
+                      <span className={`text-[17px] font-bold text-center transition-colors ${selectedId === template.id ? 'text-[#7A005D]' : 'text-gray-700'}`}>
+                        {template.name}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="pt-8 animate-in slide-in-from-bottom-2 duration-500">
+                <h2 className="text-[44px] font-bold text-[#7A005D] leading-none tracking-tight">Hi Harry,</h2>
+                <h2 className="text-[44px] font-bold text-[#94a3b8] leading-none tracking-tight mb-14 mt-1">What do you need help with?</h2>
+                
+                <div className="grid grid-cols-3 gap-8 mb-20">
+                   {AI_SUGGESTIONS.map((suggestion) => (
+                     <AISuggestionCard 
+                        key={suggestion.id}
+                        description={suggestion.description}
+                        title={suggestion.title}
+                        image={suggestion.image}
+                     />
+                   ))}
+                </div>
+
+                <div className="max-w-[860px] mx-auto w-full relative">
+                  <div className="relative group shadow-xl shadow-[#7A005D]/5 rounded-[28px]">
+                    <input 
+                      type="text" 
+                      placeholder="Describe the app you want to create."
+                      value={aiInputValue}
+                      onChange={(e) => setAiInputValue(e.target.value)}
+                      className="w-full pl-8 pr-32 py-6 bg-[#f1f5f9] border border-transparent rounded-[28px] outline-none focus:ring-4 focus:ring-[#7A005D]/5 focus:bg-white focus:border-[#7A005D]/20 text-[18px] text-gray-800 placeholder:text-slate-400 transition-all"
+                    />
+                    <button 
+                      disabled={!aiInputValue.trim()}
+                      className={`absolute right-3 top-1/2 -translate-y-1/2 px-10 py-3 rounded-2xl font-bold text-[16px] transition-all ${
+                        aiInputValue.trim() 
+                          ? 'bg-[#7A005D] text-white shadow-lg shadow-[#7A005D]/20 hover:bg-[#6b0051] active:scale-95' 
+                          : 'bg-[#cbd5e1] text-white cursor-not-allowed opacity-60'
+                      }`}
+                    >
+                      Start
+                    </button>
+                  </div>
+                  <div className="flex flex-col items-center gap-1 mt-10">
+                     <p className="text-[13px] text-gray-400 font-medium">Rippling AI can make mistakes.</p>
+                     <p className="text-[13px] text-gray-400 font-medium cursor-pointer hover:underline">Check important info.</p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Action Footer */}
+          {(activeTab === 'templates' && selectedId) && (
+            <div className="px-12 py-8 border-t border-gray-100 flex justify-end gap-4 bg-white shrink-0 animate-in slide-in-from-bottom-2 duration-300">
+              <button 
+                onClick={onClose}
+                className="px-10 py-4 bg-white border border-gray-200 rounded-2xl font-bold text-[17px] text-gray-700 hover:bg-gray-50 transition-all active:scale-95 shadow-sm"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={() => {
+                  const template = templates.find(t => t.id === selectedId);
+                  if (template && mode === 'app') {
+                    setView('APP_STUDIO');
+                    onClose();
+                  } else if (template && onApplyTemplate) {
+                    onApplyTemplate(template.name, 'Alabama');
+                    onClose();
+                  }
+                }}
+                className="px-12 py-4 bg-[#7A005D] text-white rounded-2xl font-bold text-[17px] hover:bg-[#6b0051] transition-all shadow-xl shadow-[#7A005D]/20 active:scale-95"
+              >
+                Continue
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       <style>{`
@@ -287,7 +290,6 @@ const TemplateSelectionModal: React.FC<TemplateSelectionModalProps> = ({ isOpen,
         .custom-scrollbar::-webkit-scrollbar-thumb {
           background: #e2e8f0;
           border-radius: 10px;
-          border: 2px solid #fcfcfc;
         }
       `}</style>
     </div>

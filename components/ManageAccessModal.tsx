@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import { X, HelpCircle, Users, ChevronRight, Trash2, Repeat, ChevronDown, Check, ChevronUp } from 'lucide-react';
-import { DriveItem } from '../types';
+import { DriveItem, ViewType } from '../types';
 
 type Role = 'Owner' | 'Editor' | 'Viewer' | 'Collaborator' | 'Runner';
 
@@ -17,6 +17,7 @@ interface ManageAccessModalProps {
   isOpen: boolean;
   onClose: () => void;
   item: DriveItem | null;
+  setView?: (view: ViewType) => void;
 }
 
 interface DropdownState {
@@ -25,7 +26,7 @@ interface DropdownState {
   rect: DOMRect;
 }
 
-const ManageAccessModal: React.FC<ManageAccessModalProps> = ({ isOpen, onClose, item }) => {
+const ManageAccessModal: React.FC<ManageAccessModalProps> = ({ isOpen, onClose, item, setView }) => {
   const [searchValue, setSearchValue] = useState('');
   const [accessList, setAccessList] = useState<AccessRow[]>([]);
   const [activeDropdown, setActiveDropdown] = useState<DropdownState | null>(null);
@@ -53,7 +54,6 @@ const ManageAccessModal: React.FC<ManageAccessModalProps> = ({ isOpen, onClose, 
     }
   }, [isOpen, item]);
 
-  // Handle outside click and scroll to close dropdown
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -108,16 +108,18 @@ const ManageAccessModal: React.FC<ManageAccessModalProps> = ({ isOpen, onClose, 
     }
   };
 
+  const handleDone = () => {
+    if (setView) setView('HOME');
+    onClose();
+  };
+
   const getAvailableRoles = (currentRole: Role): Role[] => {
-    // For Developer Tools (API), provide Editor, Viewer, and Runner in specific order.
     if (item.type === 'api' || currentRole === 'Runner') {
       return ['Editor', 'Viewer', 'Runner'];
     }
-    // For Workflows and Reports, provide Editor, Viewer, and Collaborator.
     if (item.type === 'workflow' || item.type === 'report' || currentRole === 'Collaborator') {
       return ['Editor', 'Viewer', 'Collaborator'];
     }
-    // Default base roles.
     return ['Editor', 'Viewer'];
   };
 
@@ -146,7 +148,7 @@ const ManageAccessModal: React.FC<ManageAccessModalProps> = ({ isOpen, onClose, 
               <input
                 type="text"
                 placeholder="Search or browse options to create groups of employees"
-                className="flex-1 px-4 py-2.5 bg-[#fcfcfc] border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-100 transition-all text-[14px] placeholder:text-gray-400"
+                className="flex-1 px-4 py-2.5 bg-[#fcfcfc] border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-[#7A005D]/10 transition-all text-[14px] placeholder:text-gray-400"
                 value={searchValue}
                 onChange={(e) => setSearchValue(e.target.value)}
               />
@@ -160,7 +162,7 @@ const ManageAccessModal: React.FC<ManageAccessModalProps> = ({ isOpen, onClose, 
               </button>
             </div>
             <p className="mt-2 text-[13px] text-gray-500">
-              Specify the access level for each person. <a href="#" className="text-blue-600 hover:underline">Learn more</a>
+              Specify the access level for each person. <a href="#" className="text-[#7A005D] hover:underline">Learn more</a>
             </p>
           </div>
 
@@ -207,7 +209,7 @@ const ManageAccessModal: React.FC<ManageAccessModalProps> = ({ isOpen, onClose, 
                           onClick={(e) => toggleDropdown(row.id, row.role, e)}
                           className={`flex items-center justify-between min-w-[120px] text-[15px] text-gray-900 font-medium px-3 py-2 rounded-md transition-all ${
                             activeDropdown?.id === row.id 
-                              ? 'border-[1.5px] border-blue-400 ring-2 ring-blue-50 bg-white' 
+                              ? 'border-[1.5px] border-[#7A005D]/60 ring-2 ring-[#7A005D]/5 bg-white' 
                               : 'border border-transparent hover:bg-gray-100'
                           }`}
                         >
@@ -252,7 +254,7 @@ const ManageAccessModal: React.FC<ManageAccessModalProps> = ({ isOpen, onClose, 
             Cancel
           </button>
           <button 
-            onClick={onClose}
+            onClick={handleDone}
             className="px-6 py-2.5 bg-[#3d2b2f] text-white rounded-xl text-[15px] font-bold hover:bg-[#2d1e21] transition-all active:scale-95"
           >
             Done
@@ -284,7 +286,7 @@ const ManageAccessModal: React.FC<ManageAccessModalProps> = ({ isOpen, onClose, 
               }`}
             >
               <span>{roleOption}</span>
-              {activeDropdown.role === roleOption && <Check size={18} className="text-blue-700" strokeWidth={2.5} />}
+              {activeDropdown.role === roleOption && <Check size={18} className="text-[#7A005D]" strokeWidth={2.5} />}
             </button>
           ))}
         </div>

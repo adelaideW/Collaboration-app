@@ -1,5 +1,5 @@
 
-export type ViewType = 'HOME' | 'RECENT' | 'MY_DRIVE' | 'SHARED_WITH_ME' | 'SHARED_DRIVES' | 'STARRED' | 'TASKS' | 'ARCHIVED' | 'STORAGE' | 'SETTINGS' | 'CREATE_CUSTOM_APP' | 'APP_STUDIO';
+export type ViewType = 'HOME' | 'RECENT' | 'MY_DRIVE' | 'SHARED_WITH_ME' | 'SHARED_DRIVES' | 'STARRED' | 'TASKS' | 'ARCHIVED' | 'STORAGE' | 'SETTINGS' | 'CREATE_CUSTOM_APP' | 'APP_STUDIO' | 'DOCUMENT_EDITOR' | 'FUNCTION_EDITOR' | 'REPORT_EDITOR' | 'WORKFLOW_EDITOR';
 
 export interface ProductApp {
   id: string;
@@ -20,7 +20,7 @@ export interface DriveItem {
   size: string;
   starred: boolean;
   type: 'app' | 'doc' | 'api' | 'report' | 'workflow';
-  status?: 'Pending' | 'Signed' | 'Draft' | 'Running';
+  status?: 'Yet to sign' | 'Signed' | 'Draft' | 'Running';
 }
 
 export interface StorageStat {

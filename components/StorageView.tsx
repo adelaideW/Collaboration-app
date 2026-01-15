@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Database, HardDrive, Info } from 'lucide-react';
 import { 
@@ -20,7 +19,7 @@ const StorageView: React.FC = () => {
   const used = 73;
 
   return (
-    <div className="flex-1 p-8 overflow-y-auto bg-[#FAFAFA]">
+    <div className="flex-1 p-8 overflow-y-auto bg-white">
       <div className="max-w-5xl mx-auto space-y-8">
         <header>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
