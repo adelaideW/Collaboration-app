@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Ticket, ChevronDown, Check, Layout, Database, Award, Users, Search, MoreVertical, Pencil, Trash2, Maximize2, List, Share2, Info } from 'lucide-react';
+import { X, Ticket, ChevronDown, Check, Layout, Database, Award, Users, Search, MoreVertical, Pencil, Trash2, Maximize2, List, Share2, Info, FileText, Sparkles } from 'lucide-react';
 import { ViewType } from '../types';
 
 interface TemplatePreviewModalProps {
@@ -43,6 +43,16 @@ const FEATURE_DATA: Record<string, { left: { title: string, desc: string }, righ
       title: 'Quickly Create Skills',
       desc: 'Easily create, track and manage employee skill levels, and embed this information on the Employee\'s Profile'
     }
+  },
+  'Offer letter': {
+    left: {
+      title: 'Professional Offer Letters',
+      desc: 'Generate standardized offer letters with dynamic fields for compensation, bonuses, and equity.'
+    },
+    right: {
+      title: 'Automated Workflows',
+      desc: 'Streamline the hiring process by automating the generation and signing of employment agreements.'
+    }
   }
 };
 
@@ -50,9 +60,43 @@ const AppScreenshot = ({ type, templateName }: { type: 'table' | 'form', templat
   const isTicketing = templateName === 'HR Ticketing';
   const isLicense = templateName === 'License Management';
   const isSkill = templateName === 'Skill Tracker';
+  const isOfferLetter = templateName === 'Offer letter';
 
-  const themeIcon = isTicketing ? <Ticket size={18} /> : isLicense ? <Award size={18} /> : <Users size={18} />;
-  const themeBannerIcon = isTicketing ? <Ticket size={24} /> : isLicense ? <Award size={24} /> : <Users size={24} />;
+  const themeIcon = isTicketing ? <Ticket size={18} /> : isLicense ? <Award size={18} /> : isSkill ? <Users size={18} /> : <FileText size={18} />;
+  const themeBannerIcon = isTicketing ? <Ticket size={24} /> : isLicense ? <Award size={24} /> : isSkill ? <Users size={24} /> : <FileText size={24} />;
+
+  if (isOfferLetter) {
+    if (type === 'table') {
+      return (
+        <div className="bg-white rounded-[24px] overflow-hidden shadow-2xl h-full flex flex-col border border-gray-100/50 p-8">
+          <div className="flex items-center gap-3 mb-8">
+            <div className="w-10 h-10 rounded-xl bg-[#7A005D] flex items-center justify-center text-white">
+              <FileText size={24} />
+            </div>
+            <h3 className="text-xl font-bold">Offer Letter Template</h3>
+          </div>
+          <div className="space-y-4 opacity-40">
+            <div className="h-4 w-full bg-gray-100 rounded"></div>
+            <div className="h-4 w-5/6 bg-gray-100 rounded"></div>
+            <div className="h-4 w-4/6 bg-gray-100 rounded"></div>
+            <div className="pt-8 space-y-2">
+              <div className="h-10 w-full border border-gray-200 rounded-lg"></div>
+              <div className="h-10 w-full border border-gray-200 rounded-lg"></div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    return (
+      <div className="bg-white rounded-[24px] overflow-hidden shadow-2xl h-full border border-gray-100/50 p-8 flex flex-col justify-center items-center text-center">
+        <div className="w-20 h-20 bg-[#fdf2f8] rounded-full flex items-center justify-center text-[#7A005D] mb-6">
+          <Sparkles size={40} />
+        </div>
+        <h4 className="text-xl font-bold mb-2">Ready to Edit</h4>
+        <p className="text-gray-500">Click "Create document" to start editing your offer letter template.</p>
+      </div>
+    );
+  }
 
   if (type === 'table') {
     return (
@@ -246,7 +290,11 @@ const TemplatePreviewModal: React.FC<TemplatePreviewModalProps> = ({ isOpen, onC
   if (!isOpen || !template) return null;
 
   const handleCreateApp = () => {
-    setView('APP_STUDIO');
+    if (template.name === 'Offer letter') {
+      setView('DOCUMENT_EDITOR');
+    } else {
+      setView('APP_STUDIO');
+    }
     onClose();
   };
 
@@ -254,6 +302,8 @@ const TemplatePreviewModal: React.FC<TemplatePreviewModalProps> = ({ isOpen, onC
     left: { title: `Comprehensive ${template.name}`, desc: template.description },
     right: { title: `Quickly Create ${template.name}`, desc: `Easily build and track your ${template.name.toLowerCase()} in minutes.` }
   };
+
+  const isDocument = template.name === 'Offer letter';
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
@@ -312,7 +362,7 @@ const TemplatePreviewModal: React.FC<TemplatePreviewModalProps> = ({ isOpen, onC
              </div>
              <div>
                <h4 className="text-[22px] font-bold text-gray-900 leading-none mb-1.5">{template.name}</h4>
-               <p className="text-[14px] text-gray-500 font-medium">Professional Enterprise Template</p>
+               <p className="text-[14px] text-gray-500 font-medium">{isDocument ? 'Professional Document Template' : 'Professional Enterprise Template'}</p>
              </div>
           </div>
           <div className="flex gap-4">
@@ -326,7 +376,7 @@ const TemplatePreviewModal: React.FC<TemplatePreviewModalProps> = ({ isOpen, onC
               onClick={handleCreateApp}
               className="px-12 py-4 bg-[#7A005D] text-white rounded-[20px] font-bold text-[17px] hover:bg-[#6b0051] transition-all active:scale-95 shadow-xl shadow-[#7A005D]/20"
             >
-              Create app
+              {isDocument ? 'Create document' : 'Create app'}
             </button>
           </div>
         </div>

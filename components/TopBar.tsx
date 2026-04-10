@@ -1,5 +1,5 @@
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { 
   Search, 
   HelpCircle, 
@@ -39,7 +39,8 @@ import {
   FileCode,
   ArrowRight
 } from 'lucide-react';
-import { ViewType } from '../types';
+import { ViewType, DriveItem } from '../types';
+import { MOCK_ITEMS, getIcon } from '../constants';
 
 const RipplingLogo = () => (
   <svg width="32" height="32" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
@@ -84,14 +85,12 @@ const TopBar: React.FC<TopBarProps> = ({ onAIChatOpen, setView, currentView }) =
         searchInputRef.current && !searchInputRef.current.contains(event.target as Node)
       ) {
         setIsSearchFocused(false);
-        if (searchQuery === 'Drive: In Home ') {
-          setSearchQuery('');
-        }
+        // We don't clear the query on blur to match modern browser behavior
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [searchQuery]);
+  }, []);
 
   const handleMenuClick = (view: ViewType) => {
     if (setView) {
@@ -163,6 +162,85 @@ const TopBar: React.FC<TopBarProps> = ({ onAIChatOpen, setView, currentView }) =
       ]
     }
   ];
+
+  // Helper to identify and parse search filters
+  const searchResults = useMemo(() => {
+    if (!searchQuery || searchQuery.trim() === 'Drive:') return [];
+
+    const queryLower = searchQuery.toLowerCase();
+    const tokens = queryLower.split(/\s+/);
+    
+    let viewFilter = '';
+    let typeFilter = '';
+    let userFilter = '';
+    let textParts: string[] = [];
+
+    // Simple parsing logic matching our renderSearchValue tags
+    for (let i = 0; i < tokens.length; i++) {
+      const token = tokens[i];
+      if (token === 'drive:') continue;
+
+      if (token === 'in') {
+        const next = tokens[i + 1];
+        if (next === 'tasks' || next === 'home' || next === 'star' || next === 'archived') {
+          viewFilter = next;
+          i++;
+        } else if (next === 'my' && tokens[i + 2] === 'drive') {
+          viewFilter = 'my drive';
+          i += 2;
+        } else if (next === 'shared' && tokens[i+2] === 'with' && tokens[i+3] === 'me') {
+          viewFilter = 'shared with me';
+          i += 3;
+        }
+      } else if (token === 'by') {
+        // Assume next two tokens are user name
+        const name = tokens.slice(i + 1, i + 3).join(' ');
+        if (name) {
+          userFilter = name;
+          i += 2;
+        }
+      } else if (token.startsWith('#')) {
+        const typeToken = token.substring(1);
+        const mappings: Record<string, string> = {
+          'reports': 'report',
+          'documents': 'doc',
+          'workflows': 'workflow',
+          'apps': 'app',
+          'functions': 'api'
+        };
+        typeFilter = mappings[typeToken] || typeToken;
+      } else if (token.trim() !== '') {
+        textParts.push(token);
+      }
+    }
+
+    const nameSearch = textParts.join(' ');
+
+    return MOCK_ITEMS.filter(item => {
+      // Filter by Type (#)
+      if (typeFilter && item.type !== typeFilter) return false;
+      
+      // Filter by Owner (By:)
+      if (userFilter && !item.owner.toLowerCase().includes(userFilter)) return false;
+
+      // Filter by View (In:)
+      if (viewFilter) {
+        if (viewFilter === 'tasks') {
+          if (item.type !== 'doc' || item.status === 'Signed') return false;
+        } else if (viewFilter === 'my drive') {
+          if (item.location !== 'My Drive') return false;
+        } else if (viewFilter === 'shared with me') {
+          if (item.location !== 'Shared with me') return false;
+        }
+        // General "Home" or "Star" would match broadly or check item properties
+      }
+
+      // Filter by Text
+      if (nameSearch && !item.name.toLowerCase().includes(nameSearch)) return false;
+
+      return true;
+    }).slice(0, 6); // Limit results for UI
+  }, [searchQuery]);
 
   const renderSearchValue = (val: string) => {
     const tokens = val.split(/(\s+)/);
@@ -307,12 +385,16 @@ const TopBar: React.FC<TopBarProps> = ({ onAIChatOpen, setView, currentView }) =
     return result;
   };
 
-  const suggestions = [
-    { text: `Drive: In Tasks Policy Update Signature Request`, type: 'repo' },
-    { text: `Drive: In My drive #Reports`, type: 'user' },
-    { text: `Drive: In Shared with me workflows`, type: 'global' },
-    { text: `Drive: By James wilson`, type: 'user' },
-  ];
+  const getItemIconType = (type: string) => {
+    switch(type) {
+      case 'app': return 'custom-app';
+      case 'doc': return 'documents';
+      case 'api': return 'developer-tools';
+      case 'report': return 'report';
+      case 'workflow': return 'workflow';
+      default: return 'doc';
+    }
+  };
 
   return (
     <header className="h-14 bg-white flex items-center px-4 shrink-0 w-full relative border-b border-gray-100 z-[100]">
@@ -486,24 +568,38 @@ const TopBar: React.FC<TopBarProps> = ({ onAIChatOpen, setView, currentView }) =
               </div>
 
               <div className="py-2">
-                <div className="px-4 py-1.5 text-[11px] font-bold text-gray-400 uppercase tracking-wider">RECENTS</div>
-                {suggestions.map((item, idx) => (
+                <div className="px-4 py-1.5 text-[11px] font-bold text-gray-400 uppercase tracking-wider">
+                  {searchResults.length > 0 ? 'SEARCH RESULTS' : 'NO RESULTS'}
+                </div>
+                {searchResults.map((item, idx) => (
                   <div 
-                    key={idx} 
-                    className="flex items-center justify-between px-4 py-3 hover:bg-gray-50 cursor-pointer group"
+                    key={item.id} 
+                    className="flex items-center justify-between px-4 py-3 hover:bg-gray-50 cursor-pointer group transition-colors"
                   >
                     <div className="flex items-center gap-3 min-w-0">
-                      <FileCode size={18} className="text-gray-400" />
+                      <div className="shrink-0 scale-75 origin-center">
+                        {getIcon(getItemIconType(item.type), "w-8 h-8", 'branded')}
+                      </div>
                       <div className="flex flex-col min-w-0">
                         <span className="text-[14px] text-gray-800 font-medium truncate">
-                           {renderSearchValue(item.text)}
+                           {item.name}
                         </span>
-                        <span className="text-[11px] text-gray-400 truncate mt-0.5">adelaideW/Collaboration-app</span>
+                        <div className="flex items-center gap-1.5 text-[11px] text-gray-400 truncate mt-0.5">
+                          <span className="font-semibold">{item.owner}</span>
+                          <span className="opacity-40">•</span>
+                          <span>adelaideW/Collaboration-app</span>
+                          {item.location && (
+                            <>
+                              <span className="opacity-40">•</span>
+                              <span className="text-[#7A005D]/70 font-medium">{item.location}</span>
+                            </>
+                          )}
+                        </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <span className="text-[11px] text-gray-500">Jump to</span>
-                      <ArrowRight size={14} className="text-gray-400" />
+                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity pr-2 shrink-0">
+                      <span className="text-[11px] text-gray-500 font-bold uppercase tracking-wider">Jump to</span>
+                      <ArrowRight size={14} className="text-[#7A005D]" />
                     </div>
                   </div>
                 ))}

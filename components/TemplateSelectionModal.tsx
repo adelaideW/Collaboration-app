@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Layout, Sparkles, Search, ChevronRight, FileText, Check, Ticket, Award, Users, Monitor, Truck, Headphones, BarChart3, DollarSign, MoreVertical, Info, Maximize2 } from 'lucide-react';
 import { ViewType } from '../types';
 
@@ -9,9 +9,11 @@ interface TemplateSelectionModalProps {
   setView: (view: ViewType) => void;
   onApplyTemplate?: (name: string, state: string) => void;
   mode?: 'doc' | 'app';
+  initialTab?: 'help' | 'templates';
 }
 
 const APP_TEMPLATES = [
+  { id: 'offer-letter', name: 'Offer letter', icon: <FileText size={12} />, bannerIcon: <FileText size={18} /> },
   { id: 'hr-ticketing', name: 'HR Ticketing', icon: <Ticket size={12} />, bannerIcon: <Ticket size={18} /> },
   { id: 'license-mgmt', name: 'License Management', icon: <Award size={12} />, bannerIcon: <Award size={18} /> },
   { id: 'skill-tracker', name: 'Skill Tracker', icon: <Users size={12} />, bannerIcon: <Users size={18} /> },
@@ -22,7 +24,13 @@ const APP_TEMPLATES = [
   { id: 'sales-crm', name: 'Sales CRM', icon: <DollarSign size={12} />, bannerIcon: <DollarSign size={18} /> },
 ];
 
-const AI_SUGGESTIONS = [
+// Explicitly typing AI_SUGGESTIONS to ensure 'image' property is correctly inferred as 'string | null'
+const AI_SUGGESTIONS: {
+  id: string;
+  description: string;
+  title: string;
+  image: string | null;
+}[] = [
   {
     id: 'onboarding',
     description: "Employee onboarding guide that highlights employee perks",
@@ -92,7 +100,8 @@ const TemplateMockupCard = ({ name, icon, bannerIcon }: { name: string, icon: Re
   </div>
 );
 
-const AISuggestionCard = ({ description, title, image }: { description: string, title: string, image: string | null }) => (
+// Added explicit React.FC typing to resolve the 'key' property TypeScript error during mapping
+const AISuggestionCard: React.FC<{ description: string, title: string, image: string | null }> = ({ description, title, image }) => (
   <div className="flex flex-col gap-5 bg-transparent rounded-[24px] p-2 hover:bg-[#fdf2f8]/40 transition-all cursor-pointer group">
     <p className="text-[14px] font-bold text-[#475569] leading-snug px-2">
       {description}
@@ -127,10 +136,24 @@ const AISuggestionCard = ({ description, title, image }: { description: string, 
   </div>
 );
 
-const TemplateSelectionModal: React.FC<TemplateSelectionModalProps> = ({ isOpen, onClose, setView, onApplyTemplate, mode = 'doc' }) => {
-  const [activeTab, setActiveTab] = useState<'help' | 'templates'>('help');
+const TemplateSelectionModal: React.FC<TemplateSelectionModalProps> = ({ 
+  isOpen, 
+  onClose, 
+  setView, 
+  onApplyTemplate, 
+  mode = 'doc',
+  initialTab = 'help'
+}) => {
+  const [activeTab, setActiveTab] = useState<'help' | 'templates'>(initialTab);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [aiInputValue, setAiInputValue] = useState('');
+
+  // Reset tab when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setActiveTab(initialTab);
+    }
+  }, [isOpen, initialTab]);
 
   if (!isOpen) return null;
 
@@ -263,12 +286,18 @@ const TemplateSelectionModal: React.FC<TemplateSelectionModalProps> = ({ isOpen,
               <button 
                 onClick={() => {
                   const template = templates.find(t => t.id === selectedId);
-                  if (template && mode === 'app') {
-                    setView('APP_STUDIO');
-                    onClose();
-                  } else if (template && onApplyTemplate) {
-                    onApplyTemplate(template.name, 'Alabama');
-                    onClose();
+                  if (template) {
+                    if (template.name === 'Offer letter') {
+                      setView('DOCUMENT_EDITOR');
+                      if (onApplyTemplate) onApplyTemplate(template.name, 'Alabama');
+                      onClose();
+                    } else if (mode === 'app') {
+                      setView('APP_STUDIO');
+                      onClose();
+                    } else if (onApplyTemplate) {
+                      onApplyTemplate(template.name, 'Alabama');
+                      onClose();
+                    }
                   }
                 }}
                 className="px-12 py-4 bg-[#7A005D] text-white rounded-2xl font-bold text-[17px] hover:bg-[#6b0051] transition-all shadow-xl shadow-[#7A005D]/20 active:scale-95"

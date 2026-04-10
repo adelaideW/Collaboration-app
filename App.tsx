@@ -14,10 +14,12 @@ import WorkflowEditor from './components/WorkflowEditor';
 import { ViewType } from './types';
 
 const App: React.FC = () => {
-  const [view, setView] = useState<ViewType>('HOME');
+  // Set the initial view to DOCUMENT_EDITOR as the home page
+  const [view, setView] = useState<ViewType>('DOCUMENT_EDITOR');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isAIChatOpen, setIsAIChatOpen] = useState(false);
   const [aiChatQuery, setAiChatQuery] = useState<string | undefined>(undefined);
+  const [initialDocumentTemplate, setInitialDocumentTemplate] = useState<{name: string, state: string} | null>(null);
 
   // Synchronize initial view with URL parameters for multi-tab support
   useEffect(() => {
@@ -28,6 +30,14 @@ const App: React.FC = () => {
       setView(viewParam);
     }
   }, []);
+
+  // Special handling for template selection from CreateCustomApp
+  const handleSetView = (newView: ViewType) => {
+    if (newView === 'DOCUMENT_EDITOR' && view === 'CREATE_CUSTOM_APP') {
+      setInitialDocumentTemplate({ name: 'Offer letter', state: 'Alabama' });
+    }
+    setView(newView);
+  };
 
   const handleAskAI = (query: string) => {
     setAiChatQuery(query);
@@ -53,15 +63,22 @@ const App: React.FC = () => {
           </div>
         );
       case 'DOCUMENT_EDITOR':
-        return <DocumentEditor setView={setView} onAIChatOpen={handleToggleAIChat} />;
+        return (
+          <DocumentEditor 
+            setView={handleSetView} 
+            onAIChatOpen={handleToggleAIChat} 
+            initialTemplate={initialDocumentTemplate}
+            onClearInitialTemplate={() => setInitialDocumentTemplate(null)}
+          />
+        );
       case 'FUNCTION_EDITOR':
-        return <FunctionEditor setView={setView} />;
+        return <FunctionEditor setView={handleSetView} />;
       case 'REPORT_EDITOR':
-        return <ReportEditor setView={setView} onAIChatOpen={handleToggleAIChat} />;
+        return <ReportEditor setView={handleSetView} onAIChatOpen={handleToggleAIChat} />;
       case 'WORKFLOW_EDITOR':
-        return <WorkflowEditor setView={setView} onAIChatOpen={handleToggleAIChat} />;
+        return <WorkflowEditor setView={handleSetView} onAIChatOpen={handleToggleAIChat} />;
       default:
-        return <DriveContent view={view} setView={setView} />;
+        return <DriveContent view={view} setView={handleSetView} />;
     }
   }
 
@@ -69,7 +86,7 @@ const App: React.FC = () => {
   if (view === 'APP_STUDIO') {
     return (
       <div className="h-screen bg-white font-sans overflow-hidden">
-        <AppStudio setView={setView} />
+        <AppStudio setView={handleSetView} />
       </div>
     );
   }
@@ -77,20 +94,20 @@ const App: React.FC = () => {
   if (view === 'CREATE_CUSTOM_APP') {
     return (
       <div className="h-screen bg-white font-sans overflow-hidden">
-        <CreateCustomApp setView={setView} />
+        <CreateCustomApp setView={handleSetView} />
       </div>
     );
   }
 
   return (
     <div className="flex flex-col h-screen bg-white text-gray-900 overflow-hidden font-sans">
-      <TopBar onAIChatOpen={handleToggleAIChat} setView={setView} currentView={view} />
+      <TopBar onAIChatOpen={handleToggleAIChat} setView={handleSetView} currentView={view} />
       
       <div className="flex-1 flex min-h-0 relative overflow-hidden">
         {view !== 'DOCUMENT_EDITOR' && view !== 'FUNCTION_EDITOR' && view !== 'REPORT_EDITOR' && view !== 'WORKFLOW_EDITOR' && (
           <Sidebar 
             currentView={view} 
-            setView={setView} 
+            setView={handleSetView} 
             isCollapsed={isSidebarCollapsed} 
             setIsCollapsed={setIsSidebarCollapsed} 
             onAskAI={handleAskAI}

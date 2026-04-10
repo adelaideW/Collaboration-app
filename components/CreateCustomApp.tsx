@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Ticket, Award, Users, ChevronRight, HelpCircle, X, Search, Settings, Plus } from 'lucide-react';
+import { Ticket, Award, Users, ChevronRight, HelpCircle, X, Search, Settings, Plus, FileText } from 'lucide-react';
 import TemplatePreviewModal from './TemplatePreviewModal';
 import TemplateSelectionModal from './TemplateSelectionModal';
 import { ViewType } from '../types';
@@ -36,10 +36,10 @@ const CreateCustomApp: React.FC<CreateCustomAppProps> = ({ setView }) => {
       description: 'Monitor and allocate software licenses across teams' 
     },
     { 
-      id: '3', 
-      name: 'Skill Tracker', 
-      icon: <Users size={24} />, 
-      description: 'Keep record of employee certifications and skills' 
+      id: '4', 
+      name: 'Offer letter', 
+      icon: <FileText size={24} />, 
+      description: 'Generate professional offer letters with automated compensation details' 
     },
   ];
 

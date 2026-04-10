@@ -16,8 +16,17 @@ import {
   Users,
   Info,
   ChevronDown,
-  Pencil
+  Pencil,
+  Sparkles,
+  Eye,
+  Type,
+  Download,
+  Copy,
+  ChevronRight,
+  Tags,
+  FolderOpen
 } from 'lucide-react';
+import { createPortal } from 'react-dom';
 import { ViewType, DriveItem } from '../types';
 import { MOCK_ITEMS, getIcon } from '../constants';
 import { USER_AVATAR_URL } from './TopBar';
@@ -25,11 +34,112 @@ import ManageAccessModal from './ManageAccessModal';
 
 interface DriveContentProps { view: ViewType; setView?: (view: ViewType) => void; }
 
+interface MenuPosition {
+  top: number;
+  left: number;
+}
+
+const RowMenu: React.FC<{ 
+  item: DriveItem; 
+  onClose: () => void; 
+  position: MenuPosition;
+  onEdit: (item: DriveItem) => void;
+  onShare: (item: DriveItem) => void;
+  onRemove: (id: string) => void;
+}> = ({ item, onClose, position, onEdit, onShare, onRemove }) => {
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        onClose();
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [onClose]);
+
+  // Logic for disabled states based on screenshots
+  const isPreviewDisabled = item.type === 'api'; // Screenshot 3
+  const isDownloadDisabled = item.type === 'app'; // Screenshot 1
+  // Screenshot 2 (Doc) has everything enabled
+
+  const MenuItem = ({ icon, label, onClick, disabled = false, hasSubmenu = false }: any) => (
+    <button 
+      disabled={disabled}
+      onClick={(e) => {
+        e.stopPropagation();
+        if (!disabled && onClick) {
+          onClick();
+          onClose();
+        }
+      }}
+      className={`w-full flex items-center justify-between px-4 py-2 text-[15px] transition-colors ${
+        disabled ? 'cursor-not-allowed text-gray-300' : 'hover:bg-gray-50 text-gray-900'
+      }`}
+    >
+      <div className="flex items-center gap-3">
+        <span className={disabled ? 'text-gray-300' : 'text-gray-900'}>{icon}</span>
+        <span className="font-normal">{label}</span>
+      </div>
+      {hasSubmenu && <ChevronRight size={14} className="text-gray-400" />}
+    </button>
+  );
+
+  return createPortal(
+    <div 
+      ref={menuRef}
+      style={{ 
+        position: 'fixed', 
+        top: `${position.top}px`, 
+        left: `${position.left - 240}px`, // Offset to the left of the button
+        width: '240px',
+        zIndex: 9999 
+      }}
+      className="bg-white rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.12)] border border-gray-100 py-1 overflow-hidden animate-in fade-in zoom-in-95 duration-100"
+    >
+      {/* AI Header */}
+      <div className="bg-[#f0f0f0] px-4 py-2.5 flex items-center gap-3 mb-1 border-b border-gray-200/50">
+        <Sparkles size={18} className="text-[#7A005D] fill-[#7A005D]/20" />
+        <span className="text-[15px] font-medium text-gray-900">Summarize with AI</span>
+      </div>
+
+      <div className="py-1">
+        <MenuItem icon={<Pencil size={18} />} label="Edit" onClick={() => onEdit(item)} />
+        <MenuItem icon={<Eye size={18} />} label="Preview" disabled={isPreviewDisabled} />
+        <MenuItem icon={<Type size={18} />} label="Rename" />
+        <MenuItem icon={<Download size={18} />} label="Download" disabled={isDownloadDisabled} />
+        <MenuItem icon={<Copy size={18} />} label="Make a copy" />
+      </div>
+
+      <div className="h-px bg-gray-100 my-1 mx-2"></div>
+
+      <div className="py-1">
+        <MenuItem icon={<Share2 size={18} />} label="Share" hasSubmenu onClick={() => onShare(item)} />
+        <MenuItem icon={<FolderOpen size={18} />} label="Organize" hasSubmenu />
+        <MenuItem icon={<Info size={18} />} label="Info" hasSubmenu />
+        <MenuItem icon={<Tags size={18} />} label="Tags" hasSubmenu />
+      </div>
+
+      <div className="h-px bg-gray-100 my-1 mx-2"></div>
+
+      <div className="py-1">
+        <MenuItem icon={<Trash2 size={18} />} label="Remove" onClick={() => onRemove(item.id)} />
+      </div>
+    </div>,
+    document.body
+  );
+};
+
 const DriveContent: React.FC<DriveContentProps> = ({ view, setView }) => {
   const [items, setItems] = useState<DriveItem[]>(MOCK_ITEMS);
   const [search, setSearch] = useState('');
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [selectedItemForShare, setSelectedItemForShare] = useState<DriveItem | null>(null);
+  
+  // Menu State
+  const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
+  const [menuPosition, setMenuPosition] = useState<MenuPosition>({ top: 0, left: 0 });
 
   const toggleStar = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -38,19 +148,18 @@ const DriveContent: React.FC<DriveContentProps> = ({ view, setView }) => {
     ));
   };
 
-  const handleRemoveItem = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleRemoveItem = (id: string) => {
     setItems(prev => prev.filter(item => item.id !== id));
+    setActiveMenuId(null);
   };
 
-  const handleShareClick = (item: DriveItem, e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleShareClick = (item: DriveItem) => {
     setSelectedItemForShare(item);
     setIsShareModalOpen(true);
+    setActiveMenuId(null);
   };
 
-  const handleEditItem = (item: DriveItem, e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleEditItem = (item: DriveItem) => {
     if (setView) {
       if (item.type === 'doc') {
         setView('DOCUMENT_EDITOR');
@@ -64,6 +173,14 @@ const DriveContent: React.FC<DriveContentProps> = ({ view, setView }) => {
         setView('APP_STUDIO');
       }
     }
+    setActiveMenuId(null);
+  };
+
+  const handleMoreClick = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const rect = e.currentTarget.getBoundingClientRect();
+    setMenuPosition({ top: rect.bottom + 8, left: rect.left });
+    setActiveMenuId(id === activeMenuId ? null : id);
   };
 
   const filteredItems = items.filter(item => {
@@ -250,27 +367,30 @@ const DriveContent: React.FC<DriveContentProps> = ({ view, setView }) => {
                     <Star size={16} className={item.starred ? "fill-yellow-400" : ""} />
                   </button>
                   <button 
-                    onClick={(e) => handleEditItem(item, e)}
+                    onClick={() => handleEditItem(item)}
                     className="p-1.5 text-gray-400 hover:text-[#7A005D] hover:bg-[#7A005D]/10 rounded-lg transition-all opacity-0 group-hover:opacity-100"
                     title="Edit"
                   >
                     <Pencil size={16} />
                   </button>
                   <button 
-                    onClick={(e) => handleShareClick(item, e)}
+                    onClick={() => { setSelectedItemForShare(item); setIsShareModalOpen(true); }}
                     className="p-1.5 text-gray-400 hover:text-[#7A005D] hover:bg-[#7A005D]/10 rounded-lg transition-all opacity-0 group-hover:opacity-100"
                     title="Share"
                   >
                     <Share2 size={16} />
                   </button>
                   <button 
-                    onClick={(e) => handleRemoveItem(item.id, e)}
+                    onClick={(e) => { e.stopPropagation(); setItems(prev => prev.filter(i => i.id !== item.id)); }}
                     className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
                     title="Remove"
                   >
                     <Trash2 size={16} />
                   </button>
-                  <button className="p-1.5 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all">
+                  <button 
+                    onClick={(e) => handleMoreClick(item.id, e)}
+                    className={`p-1.5 rounded-lg transition-all ${activeMenuId === item.id ? 'bg-gray-100 text-gray-900' : 'text-gray-400 hover:text-gray-900 hover:bg-gray-100'}`}
+                  >
                     <MoreVertical size={16} />
                   </button>
                 </div>
@@ -287,6 +407,17 @@ const DriveContent: React.FC<DriveContentProps> = ({ view, setView }) => {
           </div>
         )}
       </div>
+
+      {activeMenuId && (
+        <RowMenu 
+          item={items.find(i => i.id === activeMenuId)!} 
+          onClose={() => setActiveMenuId(null)} 
+          position={menuPosition}
+          onEdit={handleEditItem}
+          onShare={handleShareClick}
+          onRemove={handleRemoveItem}
+        />
+      )}
 
       {isShareModalOpen && (
         <ManageAccessModal 
