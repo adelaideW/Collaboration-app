@@ -14,8 +14,7 @@ import WorkflowEditor from './components/WorkflowEditor';
 import { ViewType } from './types';
 
 const App: React.FC = () => {
-  // Set the initial view to DOCUMENT_EDITOR as the home page
-  const [view, setView] = useState<ViewType>('DOCUMENT_EDITOR');
+  const [view, setView] = useState<ViewType>('HOME');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isAIChatOpen, setIsAIChatOpen] = useState(false);
   const [aiChatQuery, setAiChatQuery] = useState<string | undefined>(undefined);
