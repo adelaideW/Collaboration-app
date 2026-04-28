@@ -1,23 +1,20 @@
 /**
- * Resolves the Gemini API key for the browser bundle.
- * Vite injects `process.env.API_KEY` from `GEMINI_API_KEY` or `VITE_GEMINI_API_KEY`
- * at build time; `import.meta.env.VITE_*` is available when set in `.env`.
+ * Returns the Gemini API key embedded at build time (`GEMINI_API_KEY` /
+ * `VITE_GEMINI_API_KEY` merged in `vite.config.ts`). Prefer this over reading
+ * `process.env` with casts — those patterns often fail Vite’s static substitution.
  */
 export function resolveGeminiApiKey(): string {
-  const viteKey =
+  const fromDefine =
+    typeof __GEMINI_KEY_BUILD__ !== 'undefined'
+      ? String(__GEMINI_KEY_BUILD__).trim()
+      : '';
+
+  const fromImportMeta =
     typeof import.meta !== 'undefined' && import.meta.env?.VITE_GEMINI_API_KEY
-      ? String(import.meta.env.VITE_GEMINI_API_KEY)
+      ? String(import.meta.env.VITE_GEMINI_API_KEY).trim()
       : '';
 
-  const legacyKey =
-    typeof process !== 'undefined' && (process as unknown as { env?: { API_KEY?: string } }).env
-      ?.API_KEY
-      ? String(
-          (process as unknown as { env: { API_KEY?: string } }).env.API_KEY
-        )
-      : '';
-
-  return (viteKey || legacyKey).trim();
+  return fromDefine || fromImportMeta || '';
 }
 
 /** Prefer stable models on the Google AI (ai.google.dev) API; fall back on client error. */

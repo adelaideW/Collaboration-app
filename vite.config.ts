@@ -19,6 +19,9 @@ export default defineConfig(({ mode }) => {
       },
       plugins: [react()],
       define: {
+        // Single build-time injection Vite reliably replaces (avoids casted process.env lookups in app code).
+        __GEMINI_KEY_BUILD__: JSON.stringify(geminiKey),
+        // Kept for any dependency that expects these patterns.
         'process.env.API_KEY': JSON.stringify(geminiKey),
         'process.env.GEMINI_API_KEY': JSON.stringify(geminiKey),
       },
