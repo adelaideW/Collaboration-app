@@ -52,6 +52,8 @@ import {
 export interface DocumentEditorRef {
   /** Snapshot for toolbar TopBar toggle — respects current selection when present */
   captureAISession: () => DocumentAISessionBootstrap;
+  /** Replaces the canvas with plain text (e.g. AI draft or template) so the user can edit further */
+  insertDocumentFromAI: (text: string, title?: string) => void;
 }
 
 interface DocumentEditorProps {
@@ -327,9 +329,16 @@ const DocumentEditor = forwardRef<DocumentEditorRef, DocumentEditorProps>(
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [selectionPosition, setSelectionPosition] = useState({ top: 0, left: 0 });
   const [isTemplatePanelOpen, setIsTemplatePanelOpen] = useState(false);
-  
+  /** AI-inserted drafts use a textarea for reliable editable plain text */
+  const [plainBodyEditor, setPlainBodyEditor] = useState(false);
+  const [plainBodyText, setPlainBodyText] = useState('');
+  const plainTextareaRef = useRef<HTMLTextAreaElement>(null);
+
   const contentRef = useRef<HTMLDivElement>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
+
+  /** Textarea selection mirrors “Revise selection” UX for AI context */
+  const [plainSelectionActive, setPlainSelectionActive] = useState(false);
 
   useEffect(() => {
     const handleSelectionChange = () => {
@@ -365,22 +374,40 @@ const DocumentEditor = forwardRef<DocumentEditorRef, DocumentEditorProps>(
     }
   }, [isEditingName]);
 
+  const syncPlainSelectionHint = () => {
+    const el = plainTextareaRef.current;
+    if (!el) return;
+    const { selectionStart: a, selectionEnd: b } = el;
+    setPlainSelectionActive(a !== b && !!el.value.slice(a, b).trim());
+  };
+
   const handleApplyTemplate = (name: string, state: string) => {
+    setPlainBodyEditor(false);
+    setPlainBodyText('');
     setAppliedTemplate({ name, state });
     setDocumentName(`${name} - ${state}`);
   };
 
   const buildAISession = useCallback(
     (intent: DocumentAIIntent): DocumentAISessionBootstrap => {
-      const sel = typeof window !== 'undefined'
-        ? (window.getSelection()?.toString()?.trim() ?? '')
-        : '';
+      let sel = '';
+      if (plainBodyEditor && plainTextareaRef.current) {
+        const el = plainTextareaRef.current;
+        const a = el.selectionStart;
+        const b = el.selectionEnd;
+        sel = el.value.slice(Math.min(a, b), Math.max(a, b)).trim();
+      } else if (typeof window !== 'undefined') {
+        sel = window.getSelection()?.toString()?.trim() ?? '';
+      }
+
       let resolvedIntent: DocumentAIIntent = intent;
       if (intent === 'revise-selection' && !sel) {
         resolvedIntent = 'general';
       }
 
-      const fullText = contentRef.current?.innerText ?? '';
+      const fullText = plainBodyEditor
+        ? plainBodyText
+        : (contentRef.current?.innerText ?? '');
 
       let selectedOut: string | undefined;
       if (intent === 'compose') {
@@ -396,19 +423,30 @@ const DocumentEditor = forwardRef<DocumentEditorRef, DocumentEditorProps>(
         intent: resolvedIntent,
       };
     },
-    [documentName]
+    [documentName, plainBodyEditor, plainBodyText]
   );
+
+  const insertDocumentFromAI = useCallback((text: string, title?: string) => {
+    setPlainBodyEditor(true);
+    setPlainBodyText(text.replace(/\r\n/g, '\n'));
+    setAppliedTemplate({ name: 'Untitled Document', state: '' });
+    const nextTitle = title?.trim();
+    setDocumentName(nextTitle || 'Document from AI');
+    setTimeout(() => plainTextareaRef.current?.focus(), 0);
+  }, []);
 
   useImperativeHandle(
     ref,
     () => ({
       captureAISession: (): DocumentAISessionBootstrap =>
         buildAISession('general'),
+      insertDocumentFromAI,
     }),
-    [buildAISession]
+    [buildAISession, insertDocumentFromAI]
   );
 
   const handleInput = (e: React.FormEvent<HTMLDivElement>) => {
+    if (plainBodyEditor) return;
     const text = e.currentTarget.innerText.replace(/\u00a0/g, ' ').trim();
     if (text === '' && appliedTemplate && appliedTemplate.name === 'Untitled Document') {
       setAppliedTemplate(null);
@@ -421,6 +459,8 @@ const DocumentEditor = forwardRef<DocumentEditorRef, DocumentEditorProps>(
       const isInput = ['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName) || (e.target as HTMLElement).isContentEditable;
       
       if (!appliedTemplate && !isInput && e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        setPlainBodyEditor(false);
+        setPlainBodyText('');
         setAppliedTemplate({ name: 'Untitled Document', state: '' });
         // We need to wait for the next render to focus the contentRef
         setTimeout(() => {
@@ -438,6 +478,8 @@ const DocumentEditor = forwardRef<DocumentEditorRef, DocumentEditorProps>(
   const handleContainerClick = (e: React.MouseEvent) => {
     // If clicking the empty space and no template is applied, start manual mode
     if (!appliedTemplate && e.target === e.currentTarget) {
+      setPlainBodyEditor(false);
+      setPlainBodyText('');
       setAppliedTemplate({ name: 'Untitled Document', state: '' });
       setTimeout(() => {
         if (contentRef.current) {
@@ -631,10 +673,15 @@ const DocumentEditor = forwardRef<DocumentEditorRef, DocumentEditorProps>(
           className="flex-1 overflow-y-auto px-8 pb-40 flex flex-col items-center bg-white custom-scrollbar relative"
           onClick={handleContainerClick}
         >
-          {isTextSelected && (
-            <div 
-              className="fixed z-50 animate-in fade-in slide-in-from-top-2 duration-200"
-              style={{ top: selectionPosition.top - 40, left: selectionPosition.left - 60 }}
+          {((plainBodyEditor && plainSelectionActive) ||
+            (!plainBodyEditor && isTextSelected)) && (
+            <div
+              className={`fixed z-50 animate-in fade-in slide-in-from-top-2 duration-200 ${plainBodyEditor ? 'bottom-40 left-1/2 -translate-x-1/2' : ''}`}
+              style={
+                plainBodyEditor
+                  ? undefined
+                  : { top: selectionPosition.top - 40, left: selectionPosition.left - 60 }
+              }
             >
               <button 
                 onClick={() => onOpenDocumentAI?.(buildAISession('revise-selection'))}
@@ -672,16 +719,30 @@ const DocumentEditor = forwardRef<DocumentEditorRef, DocumentEditorProps>(
 
           <div className="w-full max-w-[900px] min-h-full animate-in fade-in duration-500">
             {appliedTemplate ? (
-              <div 
-                ref={contentRef}
-                className="w-full text-left outline-none focus:ring-0 selection:bg-[#7A005D]/10" 
-                contentEditable 
-                suppressContentEditableWarning
-                onInput={handleInput}
-                onKeyDown={handleKeyDown}
-              >
-                {renderTemplateContent()}
-              </div>
+              plainBodyEditor ? (
+                <textarea
+                  ref={plainTextareaRef}
+                  value={plainBodyText}
+                  onChange={(e) => setPlainBodyText(e.target.value)}
+                  onSelect={syncPlainSelectionHint}
+                  onKeyUp={syncPlainSelectionHint}
+                  onMouseUp={syncPlainSelectionHint}
+                  spellCheck
+                  placeholder="Ask the assistant to draft an offer letter, termination letter, NDA, or paste text here."
+                  className="w-full min-h-[72vh] py-12 px-4 text-gray-900 font-sans text-[13px] leading-[1.6] max-w-[800px] mx-auto text-left whitespace-pre-wrap bg-white border-0 rounded-none outline-none focus:ring-0 focus-visible:outline-none resize-y selection:bg-[#7A005D]/10"
+                />
+              ) : (
+                <div 
+                  ref={contentRef}
+                  className="w-full text-left outline-none focus:ring-0 selection:bg-[#7A005D]/10" 
+                  contentEditable 
+                  suppressContentEditableWarning
+                  onInput={handleInput}
+                  onKeyDown={handleKeyDown}
+                >
+                  {renderTemplateContent()}
+                </div>
+              )
             ) : (
               <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
                 <div className="flex items-center gap-4">

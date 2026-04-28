@@ -16,13 +16,15 @@ import {
   MessageSquarePlus, 
   Maximize2, 
   Upload, 
-  ArrowUp
+  ArrowUp,
+  ArrowDownToLine,
 } from 'lucide-react';
 import { GoogleGenAI, Chat, GenerateContentResponse } from "@google/genai";
 import {
   DocumentAISessionBootstrap,
   buildDocumentEditorSystemInstruction,
 } from "./documentAISession";
+import { resolveGeminiApiKey, GEMINI_CHAT_MODELS } from "./geminiConfig";
 
 interface Message {
   role: 'user' | 'assistant';
@@ -35,6 +37,27 @@ interface AIChatPanelProps {
   initialQuery?: string;
   /** When set while open, scopes the assistant to the document editor */
   documentSession?: DocumentAISessionBootstrap | null;
+  /** True when the user is on the document editor route — shows document UI even before session hydrates */
+  isDocumentEditorRoute?: boolean;
+  /** Inserts AI output into the open document canvas (plain text mode) */
+  onInsertIntoDocument?: (text: string) => void;
+}
+
+const MISSING_KEY_MESSAGE =
+  'Configure a Gemini API key to use Rippling AI. For local dev, create `.env.local` with `GEMINI_API_KEY=` or `VITE_GEMINI_API_KEY=` ' +
+  'from Google AI Studio. On Vercel, add `GEMINI_API_KEY` or `VITE_GEMINI_API_KEY` to Project → Environment Variables and redeploy so the bundle includes the key.';
+
+function extractInsertableBlob(content: string): string {
+  const fence = content.match(/```(?:plaintext|text)?\s*([\s\S]*?)```/i);
+  if (fence?.[1]?.trim()) return fence[1].trim();
+  return content.trim();
+}
+
+function formatSendError(error: unknown): string {
+  if (error instanceof Error) {
+    return `Could not reach the AI: ${error.message}`;
+  }
+  return `Could not reach the AI: ${String(error)}`;
 }
 
 const AIChatPanel: React.FC<AIChatPanelProps> = ({
@@ -42,6 +65,8 @@ const AIChatPanel: React.FC<AIChatPanelProps> = ({
   onClose,
   initialQuery,
   documentSession = null,
+  isDocumentEditorRoute = false,
+  onInsertIntoDocument,
 }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
@@ -108,6 +133,19 @@ const AIChatPanel: React.FC<AIChatPanelProps> = ({
     ) => {
       if (!text.trim()) return;
 
+      const apiKey = resolveGeminiApiKey();
+      if (!apiKey) {
+        if (!isInitial) {
+          setMessages((prev) => [...prev, { role: 'user', content: text }]);
+          setInputValue('');
+        }
+        setMessages((prev) => [
+          ...prev,
+          { role: 'assistant', content: MISSING_KEY_MESSAGE },
+        ]);
+        return;
+      }
+
       if (!isInitial) {
         setMessages((prev) => [...prev, { role: 'user', content: text }]);
         setInputValue('');
@@ -115,22 +153,34 @@ const AIChatPanel: React.FC<AIChatPanelProps> = ({
 
       setIsLoading(true);
 
-      try {
-        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const systemInstruction =
+        systemInstructionOverride ?? resolveSystemInstruction();
 
-        const systemInstruction =
-          systemInstructionOverride ?? resolveSystemInstruction();
+      try {
+        const ai = new GoogleGenAI({ apiKey });
 
         if (!chatRef.current) {
-          chatRef.current = ai.chats.create({
-            model: 'gemini-3-flash-preview',
-            config: {
-              systemInstruction,
-            },
-          });
+          let created: Chat | null = null;
+          let attemptErr: unknown;
+          for (const modelId of GEMINI_CHAT_MODELS) {
+            try {
+              created = ai.chats.create({
+                model: modelId,
+                config: {
+                  systemInstruction,
+                },
+              });
+              break;
+            } catch (e) {
+              attemptErr = e;
+              created = null;
+            }
+          }
+          if (!created) throw attemptErr ?? new Error('No Gemini model succeeded');
+          chatRef.current = created;
         }
 
-        const streamResponse = await chatRef.current.sendMessageStream({
+        const streamResponse = await chatRef.current!.sendMessageStream({
           message: text,
         });
 
@@ -139,21 +189,20 @@ const AIChatPanel: React.FC<AIChatPanelProps> = ({
 
         for await (const chunk of streamResponse) {
           const c = chunk as GenerateContentResponse;
-          assistantMessage += c.text || '';
+          assistantMessage += c.text ?? '';
 
           setMessages((prev) => {
-            const newMessages = [...prev];
-            newMessages[newMessages.length - 1].content = assistantMessage;
-            return newMessages;
+            const next = [...prev];
+            next[next.length - 1].content = assistantMessage;
+            return next;
           });
         }
-      } catch {
+      } catch (error) {
         setMessages((prev) => [
           ...prev,
           {
             role: 'assistant',
-            content:
-              "I'm sorry, I encountered an error. Please try again.",
+            content: formatSendError(error),
           },
         ]);
       } finally {
@@ -205,7 +254,16 @@ const AIChatPanel: React.FC<AIChatPanelProps> = ({
     }
   };
 
-  const isDocumentAssist = Boolean(documentSessionFingerprint);
+  const isDocumentAssist = Boolean(documentSessionFingerprint) || isDocumentEditorRoute;
+  const canInsert =
+    !!onInsertIntoDocument &&
+    (!!documentSessionFingerprint || isDocumentEditorRoute);
+
+  const handleInsertAssistantText = useCallback((raw: string) => {
+    const t = extractInsertableBlob(raw);
+    if (!t) return;
+    onInsertIntoDocument?.(t);
+  }, [onInsertIntoDocument]);
 
   if (!isOpen) return null;
 
@@ -228,16 +286,16 @@ const AIChatPanel: React.FC<AIChatPanelProps> = ({
           </h3>
         </div>
         <div className="flex items-center gap-1 shrink-0 ml-2">
-          <button className="p-1.5 hover:bg-gray-100 rounded-md text-gray-700 transition-colors">
+          <button type="button" className="p-1.5 hover:bg-gray-100 rounded-md text-gray-700 transition-colors">
             <UserRoundPlus size={20} strokeWidth={1.5} />
           </button>
-          <button className="p-1.5 hover:bg-gray-100 rounded-md text-gray-700 transition-colors">
+          <button type="button" className="p-1.5 hover:bg-gray-100 rounded-md text-gray-700 transition-colors">
             <MessageSquarePlus size={20} strokeWidth={1.5} />
           </button>
-          <button className="p-1.5 hover:bg-gray-100 rounded-md text-gray-700 transition-colors">
+          <button type="button" className="p-1.5 hover:bg-gray-100 rounded-md text-gray-700 transition-colors">
             <Maximize2 size={20} strokeWidth={1.5} />
           </button>
-          <button onClick={onClose} className="p-1.5 hover:bg-gray-100 rounded-md text-gray-700 transition-colors">
+          <button type="button" onClick={onClose} className="p-1.5 hover:bg-gray-100 rounded-md text-gray-700 transition-colors">
             <X size={20} strokeWidth={1.5} />
           </button>
         </div>
@@ -246,14 +304,26 @@ const AIChatPanel: React.FC<AIChatPanelProps> = ({
       {/* Content */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 bg-white flex flex-col min-h-0 custom-scrollbar">
         {messages.map((msg, idx) => (
-          <div key={idx} className={`flex gap-3 mb-6 animate-in fade-in duration-300 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
+          <div key={`${idx}-${msg.role}-${msg.content.slice(0, 12)}`} className={`flex gap-3 mb-6 animate-in fade-in duration-300 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
             <div className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center shadow-sm ${msg.role === 'user' ? 'bg-[#7A005D] text-white' : 'bg-white border border-gray-100 text-[#7A005D]'}`}>
               {msg.role === 'user' ? <User size={16} /> : <Bot size={16} />}
             </div>
-            <div className={`flex flex-col max-w-[85%] ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
-              <div className={`p-4 rounded-2xl text-[14px] leading-relaxed shadow-sm ${msg.role === 'user' ? 'bg-[#7A005D] text-white rounded-tr-none' : 'bg-[#f9fafb] text-gray-800 border border-gray-100 rounded-tl-none'}`}>
+            <div className={`flex flex-col gap-2 max-w-[85%] ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
+              <div className={`p-4 rounded-2xl text-[14px] leading-relaxed shadow-sm whitespace-pre-wrap break-words ${msg.role === 'user' ? 'bg-[#7A005D] text-white rounded-tr-none' : 'bg-[#f9fafb] text-gray-800 border border-gray-100 rounded-tl-none'}`}>
                 {msg.content || (isLoading && <Loader2 size={16} className="animate-spin text-gray-300" />)}
               </div>
+              {msg.role === 'assistant' &&
+                canInsert &&
+                extractInsertableBlob(msg.content).length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => handleInsertAssistantText(msg.content)}
+                    className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[12px] font-bold text-[#7A005D] bg-[#fdf2f8] border border-[#E9D5FF] hover:bg-[#fce7f3] transition-colors"
+                  >
+                    <ArrowDownToLine size={14} strokeWidth={2} />
+                    Insert into document
+                  </button>
+                )}
             </div>
           </div>
         ))}
@@ -268,9 +338,9 @@ const AIChatPanel: React.FC<AIChatPanelProps> = ({
                 : 'What do you need help with?'}
             </h1>
             {isDocumentAssist && (
-              <p className="text-[13px] text-gray-400 mt-3 leading-relaxed max-w-[280px]">
-                Try asking for an offer letter template, a revision of selected text, or a full translation (e.g.
-                French, German, Chinese).
+              <p className="text-[13px] text-gray-400 mt-3 leading-relaxed max-w-[300px]">
+                Proofread, translate, rewrite a paragraph, or generate offer letters, NDAs, and termination
+                letters. Use Insert into document when the reply is ready for the canvas.
               </p>
             )}
           </div>
@@ -284,7 +354,7 @@ const AIChatPanel: React.FC<AIChatPanelProps> = ({
             rows={1}
             placeholder={
               isDocumentAssist
-                ? 'e.g. Create an offer letter template, revise this paragraph, translate to German…'
+                ? 'e.g. Proofread spelling, translate to Mandarin, draft an NDA, insert termination letter template…'
                 : 'Ask anything'
             }
             value={inputValue}
@@ -293,11 +363,12 @@ const AIChatPanel: React.FC<AIChatPanelProps> = ({
             className="w-full bg-transparent text-[15px] text-gray-800 placeholder:text-slate-400 outline-none resize-none flex-1"
           />
           <div className="flex items-center justify-between mt-2">
-            <button className="flex items-center gap-2 px-3 py-1.5 border border-gray-100 rounded-xl text-[12px] font-bold text-gray-700 hover:bg-gray-50 transition-colors shadow-sm bg-white">
+            <button type="button" className="flex items-center gap-2 px-3 py-1.5 border border-gray-100 rounded-xl text-[12px] font-bold text-gray-700 hover:bg-gray-50 transition-colors shadow-sm bg-white">
               <Upload size={16} className="text-gray-500" />
               <span>Upload</span>
             </button>
             <button 
+              type="button"
               onClick={handleSend}
               disabled={!inputValue.trim() || isLoading}
               className={`w-10 h-10 flex items-center justify-center rounded-xl transition-all ${inputValue.trim() && !isLoading ? 'bg-[#7A005D]/10 text-[#7A005D] hover:bg-[#7A005D]/20' : 'bg-[#f8fafc] text-[#cbd5e1]'}`}

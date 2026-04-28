@@ -15,6 +15,7 @@ View your app in AI Studio: https://ai.studio/apps/54a45afe-016d-486e-a5dc-95262
 
 1. Install dependencies:
    `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
+2. Copy `GEMINI_API_KEY` **or** `VITE_GEMINI_API_KEY` into [.env.local](.env.local) with your key from [Google AI Studio](https://aistudio.google.com/). Either name works; both are wired in `vite.config.ts`.
+3. For **Vercel** (production), add `GEMINI_API_KEY` **or** `VITE_GEMINI_API_KEY` under Project → Settings → Environment Variables **before** deploying so Vite embeds the key into the bundle. Without a key, the assistant shows a visible configuration error instead of a generic failure.
+4. Run the app:
    `npm run dev`

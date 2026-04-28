@@ -61,12 +61,19 @@ const App: React.FC = () => {
       return;
     }
     setAiChatQuery(undefined);
-    if (view === 'DOCUMENT_EDITOR' && documentEditorRef.current) {
-      setDocumentAISession(documentEditorRef.current.captureAISession());
+    setIsAIChatOpen(true);
+    if (view === 'DOCUMENT_EDITOR') {
+      if (documentEditorRef.current) {
+        setDocumentAISession(documentEditorRef.current.captureAISession());
+      } else {
+        queueMicrotask(() => {
+          const cap = documentEditorRef.current?.captureAISession();
+          if (cap) setDocumentAISession(cap);
+        });
+      }
     } else {
       setDocumentAISession(null);
     }
-    setIsAIChatOpen(true);
   };
 
   const handleCloseAIChatPanel = () => {
@@ -150,6 +157,13 @@ const App: React.FC = () => {
           onClose={handleCloseAIChatPanel} 
           initialQuery={aiChatQuery}
           documentSession={documentAISession}
+          isDocumentEditorRoute={view === 'DOCUMENT_EDITOR'}
+          onInsertIntoDocument={
+            view === 'DOCUMENT_EDITOR'
+              ? (text: string) =>
+                  documentEditorRef.current?.insertDocumentFromAI(text)
+              : undefined
+          }
         />
       </div>
     </div>
