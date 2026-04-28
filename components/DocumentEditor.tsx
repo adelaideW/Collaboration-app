@@ -1,5 +1,11 @@
-
-import React, { useState, useRef, useEffect } from 'react';
+import React, {
+  useState,
+  useRef,
+  useEffect,
+  forwardRef,
+  useImperativeHandle,
+  useCallback,
+} from 'react';
 import { 
   RotateCcw, 
   RotateCw, 
@@ -38,10 +44,20 @@ import {
 } from 'lucide-react';
 import { ViewType } from '../types';
 import TemplateSelectionModal from './TemplateSelectionModal';
+import {
+  DocumentAISessionBootstrap,
+  DocumentAIIntent,
+} from './documentAISession';
+
+export interface DocumentEditorRef {
+  /** Snapshot for toolbar TopBar toggle — respects current selection when present */
+  captureAISession: () => DocumentAISessionBootstrap;
+}
 
 interface DocumentEditorProps {
   setView: (view: ViewType) => void;
-  onAIChatOpen?: () => void;
+  /** Opens the AI drawer with structured document title, body, and optional selection */
+  onOpenDocumentAI?: (bootstrap: DocumentAISessionBootstrap) => void;
   initialTemplate?: { name: string; state: string } | null;
   onClearInitialTemplate?: () => void;
 }
@@ -278,7 +294,16 @@ const PIIA_CONTENT = (state: string) => (
   </div>
 );
 
-const DocumentEditor: React.FC<DocumentEditorProps> = ({ setView, onAIChatOpen, initialTemplate, onClearInitialTemplate }) => {
+const DocumentEditor = forwardRef<DocumentEditorRef, DocumentEditorProps>(
+  function DocumentEditor(
+    {
+      setView,
+      onOpenDocumentAI,
+      initialTemplate,
+      onClearInitialTemplate,
+    },
+    ref
+  ) {
   const SLASH_MENU_ITEMS = [
     { id: 'ai', icon: <Sparkles size={16} className="text-[#7A005D]" />, label: "Revise with AI" },
     { id: 'variables', icon: <Zap size={16} />, label: "Add variables" },
@@ -345,6 +370,44 @@ const DocumentEditor: React.FC<DocumentEditorProps> = ({ setView, onAIChatOpen, 
     setDocumentName(`${name} - ${state}`);
   };
 
+  const buildAISession = useCallback(
+    (intent: DocumentAIIntent): DocumentAISessionBootstrap => {
+      const sel = typeof window !== 'undefined'
+        ? (window.getSelection()?.toString()?.trim() ?? '')
+        : '';
+      let resolvedIntent: DocumentAIIntent = intent;
+      if (intent === 'revise-selection' && !sel) {
+        resolvedIntent = 'general';
+      }
+
+      const fullText = contentRef.current?.innerText ?? '';
+
+      let selectedOut: string | undefined;
+      if (intent === 'compose') {
+        selectedOut = undefined;
+      } else {
+        selectedOut = sel || undefined;
+      }
+
+      return {
+        documentTitle: documentName,
+        fullDocumentText: fullText,
+        selectedText: selectedOut,
+        intent: resolvedIntent,
+      };
+    },
+    [documentName]
+  );
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      captureAISession: (): DocumentAISessionBootstrap =>
+        buildAISession('general'),
+    }),
+    [buildAISession]
+  );
+
   const handleInput = (e: React.FormEvent<HTMLDivElement>) => {
     const text = e.currentTarget.innerText.replace(/\u00a0/g, ' ').trim();
     if (text === '' && appliedTemplate && appliedTemplate.name === 'Untitled Document') {
@@ -409,7 +472,8 @@ const DocumentEditor: React.FC<DocumentEditorProps> = ({ setView, onAIChatOpen, 
       } else if (e.key === 'Enter') {
         e.preventDefault();
         const item = SLASH_MENU_ITEMS[selectedIndex];
-        if (item.id === 'ai') onAIChatOpen?.();
+        if (item.id === 'ai')
+          onOpenDocumentAI?.(buildAISession('revise-selection'));
         setIsSlashMenuOpen(false);
       } else if (!['Tab'].includes(e.key)) {
         // Hide menu when user starts typing something else
@@ -573,7 +637,7 @@ const DocumentEditor: React.FC<DocumentEditorProps> = ({ setView, onAIChatOpen, 
               style={{ top: selectionPosition.top - 40, left: selectionPosition.left - 60 }}
             >
               <button 
-                onClick={onAIChatOpen}
+                onClick={() => onOpenDocumentAI?.(buildAISession('revise-selection'))}
                 className="flex items-center gap-2 px-4 py-2 bg-white border border-[#E9D5FF] text-[#7A005D] rounded-full text-[13px] font-bold shadow-lg hover:bg-[#fdf2f8] transition-all active:scale-95 group whitespace-nowrap"
               >
                 <Sparkles size={14} className="text-[#7A005D]" />
@@ -596,7 +660,8 @@ const DocumentEditor: React.FC<DocumentEditorProps> = ({ setView, onAIChatOpen, 
                     label={item.label} 
                     active={index === selectedIndex}
                     onClick={() => { 
-                      if (item.id === 'ai') onAIChatOpen?.();
+                      if (item.id === 'ai')
+                        onOpenDocumentAI?.(buildAISession('revise-selection'));
                       setIsSlashMenuOpen(false); 
                     }} 
                   />
@@ -621,7 +686,7 @@ const DocumentEditor: React.FC<DocumentEditorProps> = ({ setView, onAIChatOpen, 
               <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
                 <div className="flex items-center gap-4">
                   <button 
-                    onClick={onAIChatOpen}
+                    onClick={() => onOpenDocumentAI?.(buildAISession('compose'))}
                     className="flex items-center gap-3 px-8 py-3.5 bg-[#fdf2f8] border border-[#E9D5FF] text-[#7A005D] rounded-xl text-[15px] font-bold shadow-sm hover:shadow-md transition-all active:scale-95 group"
                   >
                     <Sparkles size={18} className="text-[#7A005D] group-hover:rotate-12 transition-transform" />
@@ -716,7 +781,7 @@ const DocumentEditor: React.FC<DocumentEditorProps> = ({ setView, onAIChatOpen, 
       `}</style>
     </div>
   );
-};
+});
 
 const ToolbarButton = ({ icon, active = false }: { icon: React.ReactNode, active?: boolean }) => (
   <button className={`p-1.5 rounded hover:bg-gray-100 transition-colors shrink-0 ${active ? 'bg-gray-100 text-black' : 'text-gray-600'}`}>

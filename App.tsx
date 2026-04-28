@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Sidebar from './components/Sidebar';
 import TopBar from './components/TopBar';
 import DriveContent from './components/DriveContent';
@@ -7,7 +6,8 @@ import StorageView from './components/StorageView';
 import AIChatPanel from './components/AIChatPanel';
 import CreateCustomApp from './components/CreateCustomApp';
 import AppStudio from './components/AppStudio';
-import DocumentEditor from './components/DocumentEditor';
+import DocumentEditor, { DocumentEditorRef } from './components/DocumentEditor';
+import type { DocumentAISessionBootstrap } from './components/documentAISession';
 import FunctionEditor from './components/FunctionEditor';
 import ReportEditor from './components/ReportEditor';
 import WorkflowEditor from './components/WorkflowEditor';
@@ -18,6 +18,9 @@ const App: React.FC = () => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isAIChatOpen, setIsAIChatOpen] = useState(false);
   const [aiChatQuery, setAiChatQuery] = useState<string | undefined>(undefined);
+  const [documentAISession, setDocumentAISession] =
+    useState<DocumentAISessionBootstrap | null>(null);
+  const documentEditorRef = useRef<DocumentEditorRef>(null);
   const [initialDocumentTemplate, setInitialDocumentTemplate] = useState<{name: string, state: string} | null>(null);
 
   // Synchronize initial view with URL parameters for multi-tab support
@@ -40,11 +43,35 @@ const App: React.FC = () => {
 
   const handleAskAI = (query: string) => {
     setAiChatQuery(query);
+    setDocumentAISession(null);
+    setIsAIChatOpen(true);
+  };
+
+  const handleOpenDocumentAI = (bootstrap: DocumentAISessionBootstrap) => {
+    setDocumentAISession(bootstrap);
+    setAiChatQuery(undefined);
     setIsAIChatOpen(true);
   };
 
   const handleToggleAIChat = () => {
-    setIsAIChatOpen(prev => !prev);
+    if (isAIChatOpen) {
+      setIsAIChatOpen(false);
+      setDocumentAISession(null);
+      setAiChatQuery(undefined);
+      return;
+    }
+    setAiChatQuery(undefined);
+    if (view === 'DOCUMENT_EDITOR' && documentEditorRef.current) {
+      setDocumentAISession(documentEditorRef.current.captureAISession());
+    } else {
+      setDocumentAISession(null);
+    }
+    setIsAIChatOpen(true);
+  };
+
+  const handleCloseAIChatPanel = () => {
+    setIsAIChatOpen(false);
+    setDocumentAISession(null);
     setAiChatQuery(undefined);
   };
 
@@ -64,8 +91,9 @@ const App: React.FC = () => {
       case 'DOCUMENT_EDITOR':
         return (
           <DocumentEditor 
+            ref={documentEditorRef}
             setView={handleSetView} 
-            onAIChatOpen={handleToggleAIChat} 
+            onOpenDocumentAI={handleOpenDocumentAI} 
             initialTemplate={initialDocumentTemplate}
             onClearInitialTemplate={() => setInitialDocumentTemplate(null)}
           />
@@ -119,8 +147,9 @@ const App: React.FC = () => {
 
         <AIChatPanel 
           isOpen={isAIChatOpen} 
-          onClose={() => setIsAIChatOpen(false)} 
+          onClose={handleCloseAIChatPanel} 
           initialQuery={aiChatQuery}
+          documentSession={documentAISession}
         />
       </div>
     </div>

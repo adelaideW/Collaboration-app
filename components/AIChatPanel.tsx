@@ -1,5 +1,11 @@
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useMemo,
+} from 'react';
 import { 
   X, 
   User, 
@@ -13,6 +19,10 @@ import {
   ArrowUp
 } from 'lucide-react';
 import { GoogleGenAI, Chat, GenerateContentResponse } from "@google/genai";
+import {
+  DocumentAISessionBootstrap,
+  buildDocumentEditorSystemInstruction,
+} from "./documentAISession";
 
 interface Message {
   role: 'user' | 'assistant';
@@ -23,9 +33,16 @@ interface AIChatPanelProps {
   isOpen: boolean;
   onClose: () => void;
   initialQuery?: string;
+  /** When set while open, scopes the assistant to the document editor */
+  documentSession?: DocumentAISessionBootstrap | null;
 }
 
-const AIChatPanel: React.FC<AIChatPanelProps> = ({ isOpen, onClose, initialQuery }) => {
+const AIChatPanel: React.FC<AIChatPanelProps> = ({
+  isOpen,
+  onClose,
+  initialQuery,
+  documentSession = null,
+}) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -33,6 +50,23 @@ const AIChatPanel: React.FC<AIChatPanelProps> = ({ isOpen, onClose, initialQuery
   const [isResizing, setIsResizing] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const chatRef = useRef<Chat | null>(null);
+
+  const documentSessionFingerprint = useMemo(
+    () => (documentSession ? JSON.stringify(documentSession) : ''),
+    [documentSession]
+  );
+
+  const genericDrivePrompt =
+    'You are a helpful AI assistant for Collaboration Drive. Keep responses concise and professional.';
+
+  const resolveSystemInstruction = useCallback(() => {
+    if (documentSessionFingerprint) {
+      return buildDocumentEditorSystemInstruction(
+        JSON.parse(documentSessionFingerprint) as DocumentAISessionBootstrap
+      );
+    }
+    return genericDrivePrompt;
+  }, [documentSessionFingerprint]);
 
   const startResizing = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -66,20 +100,98 @@ const AIChatPanel: React.FC<AIChatPanelProps> = ({ isOpen, onClose, initialQuery
     };
   }, [isResizing, resize, stopResizing]);
 
-  useEffect(() => {
-    if (isOpen) {
-      if (initialQuery) {
-        const initChatWithQuery = async () => {
-          setMessages([{ role: 'user', content: `Tell me about products related to: "${initialQuery}"` }]);
-          await sendMessageToAI(`Tell me about products related to: "${initialQuery}"`, true);
-        };
-        initChatWithQuery();
-      } else {
-        setMessages([]);
-        chatRef.current = null;
+  const sendMessageToAI = useCallback(
+    async (
+      text: string,
+      isInitial: boolean = false,
+      systemInstructionOverride?: string
+    ) => {
+      if (!text.trim()) return;
+
+      if (!isInitial) {
+        setMessages((prev) => [...prev, { role: 'user', content: text }]);
+        setInputValue('');
       }
+
+      setIsLoading(true);
+
+      try {
+        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
+        const systemInstruction =
+          systemInstructionOverride ?? resolveSystemInstruction();
+
+        if (!chatRef.current) {
+          chatRef.current = ai.chats.create({
+            model: 'gemini-3-flash-preview',
+            config: {
+              systemInstruction,
+            },
+          });
+        }
+
+        const streamResponse = await chatRef.current.sendMessageStream({
+          message: text,
+        });
+
+        let assistantMessage = '';
+        setMessages((prev) => [...prev, { role: 'assistant', content: '' }]);
+
+        for await (const chunk of streamResponse) {
+          const c = chunk as GenerateContentResponse;
+          assistantMessage += c.text || '';
+
+          setMessages((prev) => {
+            const newMessages = [...prev];
+            newMessages[newMessages.length - 1].content = assistantMessage;
+            return newMessages;
+          });
+        }
+      } catch {
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: 'assistant',
+            content:
+              "I'm sorry, I encountered an error. Please try again.",
+          },
+        ]);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [resolveSystemInstruction]
+  );
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    chatRef.current = null;
+
+    if (!documentSessionFingerprint && initialQuery) {
+      const initChatWithQuery = async () => {
+        setMessages([
+          {
+            role: 'user',
+            content: `Tell me about products related to: "${initialQuery}"`,
+          },
+        ]);
+        await sendMessageToAI(
+          `Tell me about products related to: "${initialQuery}"`,
+          true,
+          genericDrivePrompt
+        );
+      };
+      initChatWithQuery();
+    } else {
+      setMessages([]);
     }
-  }, [isOpen, initialQuery]);
+  }, [
+    isOpen,
+    initialQuery,
+    documentSessionFingerprint,
+    sendMessageToAI,
+  ]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -87,55 +199,13 @@ const AIChatPanel: React.FC<AIChatPanelProps> = ({ isOpen, onClose, initialQuery
     }
   }, [messages]);
 
-  const sendMessageToAI = async (text: string, isInitial: boolean = false) => {
-    if (!text.trim()) return;
-
-    if (!isInitial) {
-      setMessages(prev => [...prev, { role: 'user', content: text }]);
-      setInputValue('');
-    }
-    
-    setIsLoading(true);
-
-    try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      
-      if (!chatRef.current) {
-        chatRef.current = ai.chats.create({
-          model: 'gemini-3-flash-preview',
-          config: {
-            systemInstruction: 'You are a helpful AI assistant for Collaboration Drive. Keep responses concise and professional.',
-          },
-        });
-      }
-
-      const streamResponse = await chatRef.current.sendMessageStream({ message: text });
-      
-      let assistantMessage = '';
-      setMessages(prev => [...prev, { role: 'assistant', content: '' }]);
-
-      for await (const chunk of streamResponse) {
-        const c = chunk as GenerateContentResponse;
-        assistantMessage += c.text || '';
-        
-        setMessages(prev => {
-          const newMessages = [...prev];
-          newMessages[newMessages.length - 1].content = assistantMessage;
-          return newMessages;
-        });
-      }
-    } catch (error) {
-      setMessages(prev => [...prev, { role: 'assistant', content: "I'm sorry, I encountered an error. Please try again." }]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const handleSend = () => {
     if (inputValue.trim() && !isLoading) {
       sendMessageToAI(inputValue);
     }
   };
+
+  const isDocumentAssist = Boolean(documentSessionFingerprint);
 
   if (!isOpen) return null;
 
@@ -153,7 +223,9 @@ const AIChatPanel: React.FC<AIChatPanelProps> = ({ isOpen, onClose, initialQuery
       <div className="h-14 px-4 border-b border-gray-100 flex items-center justify-between bg-white shrink-0">
         <div className="flex items-center gap-2 min-w-0">
           <Columns size={16} className="text-gray-900 shrink-0" strokeWidth={2} />
-          <h3 className="font-bold text-gray-900 text-[15px] truncate">New chat</h3>
+          <h3 className="font-bold text-gray-900 text-[15px] truncate">
+            {isDocumentAssist ? 'Document assistant' : 'New chat'}
+          </h3>
         </div>
         <div className="flex items-center gap-1 shrink-0 ml-2">
           <button className="p-1.5 hover:bg-gray-100 rounded-md text-gray-700 transition-colors">
@@ -187,8 +259,20 @@ const AIChatPanel: React.FC<AIChatPanelProps> = ({ isOpen, onClose, initialQuery
         ))}
         {messages.length === 0 && !isLoading && (
           <div className="mt-auto mb-6">
-            <h1 className="text-[20px] font-bold text-gray-900 leading-tight">Hi Harry,</h1>
-            <h1 className="text-[20px] font-bold text-gray-300 leading-tight">What do you need help with?</h1>
+            <h1 className="text-[20px] font-bold text-gray-900 leading-tight">
+              {isDocumentAssist ? 'Document AI' : 'Hi Harry,'}
+            </h1>
+            <h1 className="text-[20px] font-bold text-gray-300 leading-tight">
+              {isDocumentAssist
+                ? 'Draft templates, revise or translate this document.'
+                : 'What do you need help with?'}
+            </h1>
+            {isDocumentAssist && (
+              <p className="text-[13px] text-gray-400 mt-3 leading-relaxed max-w-[280px]">
+                Try asking for an offer letter template, a revision of selected text, or a full translation (e.g.
+                French, German, Chinese).
+              </p>
+            )}
           </div>
         )}
       </div>
@@ -198,7 +282,11 @@ const AIChatPanel: React.FC<AIChatPanelProps> = ({ isOpen, onClose, initialQuery
         <div className="relative border border-[#7A005D]/20 rounded-[24px] p-4 bg-white shadow-sm flex flex-col min-h-[140px] focus-within:border-[#7A005D]/40 transition-colors">
           <textarea
             rows={1}
-            placeholder="Ask anything"
+            placeholder={
+              isDocumentAssist
+                ? 'e.g. Create an offer letter template, revise this paragraph, translate to German…'
+                : 'Ask anything'
+            }
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
