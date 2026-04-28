@@ -6,6 +6,8 @@ import React, {
   useCallback,
   useMemo,
 } from 'react';
+import OpenAI from 'openai';
+import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions';
 import { 
   X, 
   User, 
@@ -19,12 +21,11 @@ import {
   ArrowUp,
   ArrowDownToLine,
 } from 'lucide-react';
-import { GoogleGenAI, Chat, GenerateContentResponse } from "@google/genai";
 import {
   DocumentAISessionBootstrap,
   buildDocumentEditorSystemInstruction,
 } from "./documentAISession";
-import { resolveGeminiApiKey, GEMINI_CHAT_MODELS } from "./geminiConfig";
+import { resolveOpenAIApiKey, OPENAI_CHAT_MODEL } from "./aiConfig";
 
 interface Message {
   role: 'user' | 'assistant';
@@ -44,8 +45,8 @@ interface AIChatPanelProps {
 }
 
 const MISSING_KEY_MESSAGE =
-  'Configure a Gemini API key to use Rippling AI. For local dev, create `.env.local` with `GEMINI_API_KEY=` or `VITE_GEMINI_API_KEY=` ' +
-  'from Google AI Studio. On Vercel, add `GEMINI_API_KEY` or `VITE_GEMINI_API_KEY` to Project → Environment Variables and redeploy so the bundle includes the key.';
+  'Configure an OpenAI API key to use Rippling AI. For local dev, add `OPENAI_API_KEY=` or `VITE_OPENAI_API_KEY=` in `.env.local` ' +
+  'from OpenAI dashboard. On Vercel, add `OPENAI_API_KEY` or `VITE_OPENAI_API_KEY` to Environment Variables and redeploy so the bundle includes the key.';
 
 function extractInsertableBlob(content: string): string {
   const fence = content.match(/```(?:plaintext|text)?\s*([\s\S]*?)```/i);
@@ -58,6 +59,16 @@ function formatSendError(error: unknown): string {
     return `Could not reach the AI: ${error.message}`;
   }
   return `Could not reach the AI: ${String(error)}`;
+}
+
+function buildOpenAiMessagesFromTranscript(base: Message[]): ChatCompletionMessageParam[] {
+  return base
+    .filter((m) => m.role === 'user' || m.role === 'assistant')
+    .filter((m) => m.role === 'user' || m.content.length > 0)
+    .map((m): ChatCompletionMessageParam => ({
+      role: m.role,
+      content: m.content,
+    }));
 }
 
 const AIChatPanel: React.FC<AIChatPanelProps> = ({
@@ -74,7 +85,8 @@ const AIChatPanel: React.FC<AIChatPanelProps> = ({
   const [panelWidth, setPanelWidth] = useState(400);
   const [isResizing, setIsResizing] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const chatRef = useRef<Chat | null>(null);
+  /** Keeps synchronous transcript for chaining user turns between renders */
+  const messagesRef = useRef<Message[]>([]);
 
   const documentSessionFingerprint = useMemo(
     () => (documentSession ? JSON.stringify(documentSession) : ''),
@@ -92,6 +104,10 @@ const AIChatPanel: React.FC<AIChatPanelProps> = ({
     }
     return genericDrivePrompt;
   }, [documentSessionFingerprint]);
+
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
 
   const startResizing = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -125,122 +141,114 @@ const AIChatPanel: React.FC<AIChatPanelProps> = ({
     };
   }, [isResizing, resize, stopResizing]);
 
-  const sendMessageToAI = useCallback(
-    async (
-      text: string,
-      isInitial: boolean = false,
-      systemInstructionOverride?: string
-    ) => {
-      if (!text.trim()) return;
-
-      const apiKey = resolveGeminiApiKey();
+  /** Streams one assistant reply for the given transcript (must end with a user message). */
+  const streamAssistantForTranscript = useCallback(
+    async (transcriptWithLatestUserTurn: Message[], systemPrompt: string) => {
+      const apiKey = resolveOpenAIApiKey();
       if (!apiKey) {
-        if (!isInitial) {
-          setMessages((prev) => [...prev, { role: 'user', content: text }]);
-          setInputValue('');
-        }
-        setMessages((prev) => [
-          ...prev,
-          { role: 'assistant', content: MISSING_KEY_MESSAGE },
-        ]);
+        setMessages((prev) => [...prev, { role: 'assistant', content: MISSING_KEY_MESSAGE }]);
         return;
       }
 
-      if (!isInitial) {
-        setMessages((prev) => [...prev, { role: 'user', content: text }]);
-        setInputValue('');
-      }
+      const openAiMessages: ChatCompletionMessageParam[] = [
+        { role: 'system', content: systemPrompt },
+        ...buildOpenAiMessagesFromTranscript(transcriptWithLatestUserTurn),
+      ];
+
+      const openai = new OpenAI({ apiKey, dangerouslyAllowBrowser: true });
+
+      setMessages([
+        ...transcriptWithLatestUserTurn,
+        { role: 'assistant', content: '' },
+      ]);
 
       setIsLoading(true);
-
-      const systemInstruction =
-        systemInstructionOverride ?? resolveSystemInstruction();
-
       try {
-        const ai = new GoogleGenAI({ apiKey });
-
-        if (!chatRef.current) {
-          let created: Chat | null = null;
-          let attemptErr: unknown;
-          for (const modelId of GEMINI_CHAT_MODELS) {
-            try {
-              created = ai.chats.create({
-                model: modelId,
-                config: {
-                  systemInstruction,
-                },
-              });
-              break;
-            } catch (e) {
-              attemptErr = e;
-              created = null;
-            }
-          }
-          if (!created) throw attemptErr ?? new Error('No Gemini model succeeded');
-          chatRef.current = created;
-        }
-
-        const streamResponse = await chatRef.current!.sendMessageStream({
-          message: text,
+        const stream = await openai.chat.completions.create({
+          model: OPENAI_CHAT_MODEL,
+          messages: openAiMessages,
+          stream: true,
         });
 
         let assistantMessage = '';
-        setMessages((prev) => [...prev, { role: 'assistant', content: '' }]);
 
-        for await (const chunk of streamResponse) {
-          const c = chunk as GenerateContentResponse;
-          assistantMessage += c.text ?? '';
+        for await (const evt of stream) {
+          assistantMessage +=
+            evt.choices?.[0]?.delta?.content ?? '';
 
           setMessages((prev) => {
+            if (prev.length === 0) return prev;
             const next = [...prev];
-            next[next.length - 1].content = assistantMessage;
+            next[next.length - 1] = {
+              role: 'assistant',
+              content: assistantMessage,
+            };
             return next;
           });
         }
       } catch (error) {
-        setMessages((prev) => [
-          ...prev,
-          {
-            role: 'assistant',
-            content: formatSendError(error),
-          },
-        ]);
+        setMessages((prev) => {
+          if (prev.length === 0) return [{ role: 'assistant', content: formatSendError(error) }];
+          const next = [...prev];
+          const last = next[next.length - 1];
+          if (last.role === 'assistant')
+            next[next.length - 1] = { role: 'assistant', content: formatSendError(error) };
+          else next.push({ role: 'assistant', content: formatSendError(error) });
+          return next;
+        });
       } finally {
         setIsLoading(false);
       }
     },
-    [resolveSystemInstruction]
+    []
   );
 
+  const sendMessageToAI = useCallback(
+    async (text: string, systemInstructionOverride?: string) => {
+      const trimmed = text.trim();
+      if (!trimmed) return;
+
+      const systemInstruction =
+        systemInstructionOverride ?? resolveSystemInstruction();
+
+      if (!resolveOpenAIApiKey()) {
+        setMessages((prev) => [
+          ...prev,
+          { role: 'user', content: trimmed },
+          { role: 'assistant', content: MISSING_KEY_MESSAGE },
+        ]);
+        setInputValue('');
+        return;
+      }
+
+      const nextTranscript: Message[] = [
+        ...messagesRef.current,
+        { role: 'user', content: trimmed },
+      ];
+      messagesRef.current = nextTranscript;
+      setMessages(nextTranscript);
+      setInputValue('');
+      await streamAssistantForTranscript(nextTranscript, systemInstruction);
+    },
+    [resolveSystemInstruction, streamAssistantForTranscript]
+  );
+
+  /** Initialize sidebar product query or reset thread when opening the panel */
   useEffect(() => {
     if (!isOpen) return;
 
-    chatRef.current = null;
+    messagesRef.current = [];
 
     if (!documentSessionFingerprint && initialQuery) {
-      const initChatWithQuery = async () => {
-        setMessages([
-          {
-            role: 'user',
-            content: `Tell me about products related to: "${initialQuery}"`,
-          },
-        ]);
-        await sendMessageToAI(
-          `Tell me about products related to: "${initialQuery}"`,
-          true,
-          genericDrivePrompt
-        );
-      };
-      initChatWithQuery();
+      const userContent = `Tell me about products related to: "${initialQuery}"`;
+      const seed: Message[] = [{ role: 'user', content: userContent }];
+      messagesRef.current = seed;
+      setMessages(seed);
+      void streamAssistantForTranscript(seed, genericDrivePrompt);
     } else {
       setMessages([]);
     }
-  }, [
-    isOpen,
-    initialQuery,
-    documentSessionFingerprint,
-    sendMessageToAI,
-  ]);
+  }, [isOpen, initialQuery, documentSessionFingerprint, streamAssistantForTranscript]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -250,7 +258,7 @@ const AIChatPanel: React.FC<AIChatPanelProps> = ({
 
   const handleSend = () => {
     if (inputValue.trim() && !isLoading) {
-      sendMessageToAI(inputValue);
+      void sendMessageToAI(inputValue.trim());
     }
   };
 

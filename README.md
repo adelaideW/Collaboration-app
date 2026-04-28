@@ -15,8 +15,8 @@ View your app in AI Studio: https://ai.studio/apps/54a45afe-016d-486e-a5dc-95262
 
 1. Install dependencies:
    `npm install`
-2. Copy `GEMINI_API_KEY` **or** `VITE_GEMINI_API_KEY` into [.env.local](.env.local) with your key from [Google AI Studio](https://aistudio.google.com/). Either name works; both are wired in `vite.config.ts`.
-3. For **Vercel** (production), add **`GEMINI_API_KEY`** (recommended) **or** **`VITE_GEMINI_API_KEY`** under Project → **Settings** → **Environment Variables**, enable it for **Production** if you deploy to prod (preview deployments need **Preview** env). Redeploy after saving so the bundle embeds the key.
-4. If chat still fails: confirm the env name casing, **Production** vs **Preview**, and redeploy once more; in Google Cloud / AI Studio, ensure the API key **HTTP referrer / site restrictions** (if any) allow your `*.vercel.app` hostname.
+2. Copy `OPENAI_API_KEY` **or** `VITE_OPENAI_API_KEY` into [.env.local](.env.local) with your key from [OpenAI API keys](https://platform.openai.com/api-keys). Either name works; both are wired in `vite.config.ts`.
+3. For **Vercel** (production), add **`OPENAI_API_KEY`** (recommended) **or** **`VITE_OPENAI_API_KEY`** under Project → **Settings** → **Environment Variables**, enable it for **Production** when you ship to prod (preview deployments need **Preview** env). Redeploy after saving so Vite embeds the key into the bundle.
+4. If chat fails: verify env name casing, **Production** vs **Preview**, and redeploy after any env change. If you use restricted API keys in OpenAI/Google Cloud, ensure **HTTP referrer** or site rules allow your `*.vercel.app` hostname.
 5. Run the app:
    `npm run dev`
