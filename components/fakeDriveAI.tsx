@@ -435,7 +435,25 @@ function itemInWindow(item: DriveItem, start: Date, end: Date): boolean {
 
 function resolvePersonFromQuery(q: string): string | null {
   if (/\b(myself|me|i|mine)\b/.test(q)) return 'Me';
+
+  const extracted = q.match(/\bwhat\s+did\s+(.+?)\s+create\b/i)?.[1]?.trim() ?? '';
+  const cleanedExtracted = extracted
+    .replace(/^[{(<'"]+|[})>'"]+$/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
   const owners = Array.from(new Set(artifactItems().map((i) => i.owner)));
+  if (cleanedExtracted) {
+    const exact = owners.find((o) => o.toLowerCase() === cleanedExtracted.toLowerCase());
+    if (exact) return exact;
+
+    const contains = owners.find((o) =>
+      o.toLowerCase().includes(cleanedExtracted.toLowerCase()) ||
+      cleanedExtracted.toLowerCase().includes(o.toLowerCase())
+    );
+    if (contains) return contains;
+  }
+
   return owners.find((o) => q.includes(o.toLowerCase())) ?? null;
 }
 
