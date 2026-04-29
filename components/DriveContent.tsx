@@ -297,7 +297,7 @@ const DriveContent: React.FC<DriveContentProps> = ({ view, setView }) => {
         <div className="flex-[1.5] py-3 text-[11px] font-bold text-gray-400 uppercase tracking-wider">Created</div>
         <div className="flex-[1.5] py-3 text-[11px] font-bold text-gray-400 uppercase tracking-wider">Modified</div>
         {showLocationColumn && <div className="flex-[1.2] py-3 text-[11px] font-bold text-gray-400 uppercase tracking-wider">Location</div>}
-        <div className="w-48 py-3 text-center text-[11px] font-bold text-gray-400 uppercase tracking-wider">Actions</div>
+        <div className={`${isCompactTable ? 'w-12' : 'w-48'} py-3 text-center text-[11px] font-bold text-gray-400 uppercase tracking-wider`}>Actions</div>
       </div>
 
       {/* Main Content Area */}
@@ -376,7 +376,7 @@ const DriveContent: React.FC<DriveContentProps> = ({ view, setView }) => {
                   </div>
                 )}
 
-                <div className="w-48 py-4 flex justify-center gap-0.5 shrink-0">
+                <div className={`${isCompactTable ? 'w-12 justify-center' : 'w-48 justify-center gap-0.5'} py-4 flex shrink-0`}>
                   <button 
                     onClick={(e) => toggleStar(item.id, e)}
                     className={`${isCompactTable ? 'hidden' : 'flex'} p-1.5 rounded-lg transition-all opacity-0 group-hover:opacity-100 hover:bg-[#7A005D]/10 ${item.starred ? 'text-yellow-400' : 'text-gray-400 hover:text-yellow-400'}`}
