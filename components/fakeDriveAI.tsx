@@ -7,7 +7,16 @@ function avatarForName(name: string): string {
 }
 
 export function normalizeQuery(text: string): string {
-  return text.trim().replace(/\s+/g, ' ').toLowerCase();
+  return text
+    .trim()
+    .toLowerCase()
+    // Common typos seen in prompts.
+    .replace(/\bdoucments?\b/g, 'documents')
+    .replace(/\bdocments?\b/g, 'documents')
+    .replace(/\bdocumnts?\b/g, 'documents')
+    .replace(/\bdocumens?\b/g, 'documents')
+    .replace(/\brepots?\b/g, 'reports')
+    .replace(/\s+/g, ' ');
 }
 
 function formatHHmm(d = new Date()): string {
@@ -301,7 +310,7 @@ function renderSharing(q: string): DriveFakeReply | null {
 
 function renderLeaderboard(q: string): DriveFakeReply | null {
   if (
-    /\b(top\s+creators?|leaderboard|most\s+reports|most\s+documents|ranks?\s+by\s+documents?|who\s+created\s+the\s+most)\b/.test(q)
+    /\b(top\s+creators?|leaderboard|most\s+reports?|most\s+documents?|ranks?\s+by\s+documents?|who\s+created\s+the\s+most)\b/.test(q)
   ) {
     return {
       preamble:
@@ -315,7 +324,7 @@ function renderLeaderboard(q: string): DriveFakeReply | null {
 function renderCreatedToday(q: string): DriveFakeReply | null {
   const mentionsToday = /\b(today|this\s+morning)\b/.test(q);
   const creationContext =
-    /\b(created|creation|new\s+documents?|uploaded|who\s+created|what\s+was\s+created)\b/.test(q);
+    /\b(created|create|creation|new\s+documents?|uploaded|who\s+created|what\s+was\s+created)\b/.test(q);
   if (
     (mentionsToday && creationContext) ||
     /\bdocuments?\s+created\s+today\b/.test(q) ||
