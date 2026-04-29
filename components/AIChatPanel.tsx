@@ -447,7 +447,7 @@ const AIChatPanel: React.FC<AIChatPanelProps> = ({
         {messages.map((msg, idx) => (
           <div key={`${idx}-${msg.role}`} className={`flex mb-6 animate-in fade-in duration-300 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             <div className={`flex flex-col gap-2 max-w-[85%] min-w-0 ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
-              <div className={`p-4 rounded-2xl text-[14px] leading-relaxed shadow-sm break-words w-full ${msg.role === 'user' ? 'bg-[#7A005D] text-white rounded-tr-none' : 'bg-[#f9fafb] text-gray-800 border border-gray-100 rounded-tl-none'}`}>
+              <div className={`p-4 rounded-2xl text-[14px] leading-relaxed shadow-sm break-words w-full overflow-hidden ${msg.role === 'user' ? 'bg-[#7A005D] text-white rounded-tr-none' : 'bg-[#f9fafb] text-gray-800 border border-gray-100 rounded-tl-none'}`}>
                 {msg.role === 'user' ? (
                   <span className="whitespace-pre-wrap">{msg.content}</span>
                 ) : (
@@ -458,7 +458,7 @@ const AIChatPanel: React.FC<AIChatPanelProps> = ({
                       isLoading && <Loader2 size={16} className="animate-spin text-gray-300" />
                     )}
                     {msg.role === 'assistant' && msg.rich && (
-                      <div className={`${msg.content ? 'mt-4' : ''} text-gray-900`}>{msg.rich}</div>
+                      <div className={`${msg.content ? 'mt-4' : ''} text-gray-900 max-w-full overflow-hidden`}>{msg.rich}</div>
                     )}
                   </>
                 )}

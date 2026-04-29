@@ -102,7 +102,7 @@ interface FakeWrapProps {
 
 export function FakeTableWrap({ children }: FakeWrapProps) {
   return (
-    <div className="overflow-x-auto -mx-1">
+    <div className="w-full max-w-full overflow-x-auto">
       <div className="min-w-[300px] border border-gray-200 rounded-xl bg-white shadow-sm">{children}</div>
     </div>
   );
@@ -682,7 +682,10 @@ function renderSpecificPersonArtifacts(q: string): DriveFakeReply | null {
   const asksPersonArtifacts =
     /\b(what|show|list|tell me)\b/.test(q) &&
     /\b(created|create|built|made)\b/.test(q) &&
-    /\b(artifact|artifacts|document|documents|report|reports|app|apps|workflow|workflows)\b/.test(q);
+    (
+      /\b(artifact|artifacts|document|documents|report|reports|app|apps|workflow|workflows)\b/.test(q) ||
+      /\b(myself|me|i|mine)\b/.test(q)
+    );
   if (!asksPersonArtifacts) return null;
 
   if (!hasPeriodPhrase(q)) {
