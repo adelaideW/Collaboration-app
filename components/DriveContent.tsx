@@ -132,10 +132,12 @@ const RowMenu: React.FC<{
 };
 
 const DriveContent: React.FC<DriveContentProps> = ({ view, setView }) => {
+  const rootRef = useRef<HTMLDivElement>(null);
   const [items, setItems] = useState<DriveItem[]>(MOCK_ITEMS);
   const [search, setSearch] = useState('');
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [selectedItemForShare, setSelectedItemForShare] = useState<DriveItem | null>(null);
+  const [isCompactTable, setIsCompactTable] = useState(false);
   
   // Menu State
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
@@ -225,8 +227,22 @@ const DriveContent: React.FC<DriveContentProps> = ({ view, setView }) => {
 
   const showLocationColumn = view !== 'MY_DRIVE' && view !== 'SHARED_WITH_ME' && view !== 'TASKS';
 
+  useEffect(() => {
+    const el = rootRef.current;
+    if (!el) return;
+
+    const updateCompact = () => {
+      setIsCompactTable(el.clientWidth < 1024);
+    };
+
+    updateCompact();
+    const observer = new ResizeObserver(updateCompact);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
   return (
-    <div className="flex-1 flex flex-col min-h-0 bg-white overflow-hidden">
+    <div ref={rootRef} className="flex-1 flex flex-col min-h-0 bg-white overflow-hidden">
       {/* View Header */}
       <div className="px-8 pt-8 pb-4 shrink-0">
         <h1 className="text-2xl font-bold text-gray-900 tracking-tight mb-2">{getTitle()}</h1>
@@ -308,7 +324,9 @@ const DriveContent: React.FC<DriveContentProps> = ({ view, setView }) => {
                       className={`shrink-0 transition-all ${
                         item.starred 
                           ? 'text-yellow-400 opacity-100' 
-                          : 'text-gray-200 opacity-0 group-hover:opacity-100 hover:text-yellow-400'
+                          : isCompactTable
+                            ? 'text-gray-200 opacity-0 pointer-events-none'
+                            : 'text-gray-200 opacity-0 group-hover:opacity-100 hover:text-yellow-400'
                       }`}
                       title={item.starred ? "Unstar" : "Star"}
                     >
@@ -361,28 +379,28 @@ const DriveContent: React.FC<DriveContentProps> = ({ view, setView }) => {
                 <div className="w-48 py-4 flex justify-center gap-0.5 shrink-0">
                   <button 
                     onClick={(e) => toggleStar(item.id, e)}
-                    className={`hidden lg:flex p-1.5 rounded-lg transition-all opacity-0 group-hover:opacity-100 hover:bg-[#7A005D]/10 ${item.starred ? 'text-yellow-400' : 'text-gray-400 hover:text-yellow-400'}`}
+                    className={`${isCompactTable ? 'hidden' : 'flex'} p-1.5 rounded-lg transition-all opacity-0 group-hover:opacity-100 hover:bg-[#7A005D]/10 ${item.starred ? 'text-yellow-400' : 'text-gray-400 hover:text-yellow-400'}`}
                     title={item.starred ? "Unstar" : "Star"}
                   >
                     <Star size={16} className={item.starred ? "fill-yellow-400" : ""} />
                   </button>
                   <button 
                     onClick={() => handleEditItem(item)}
-                    className="hidden lg:flex p-1.5 text-gray-400 hover:text-[#7A005D] hover:bg-[#7A005D]/10 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                    className={`${isCompactTable ? 'hidden' : 'flex'} p-1.5 text-gray-400 hover:text-[#7A005D] hover:bg-[#7A005D]/10 rounded-lg transition-all opacity-0 group-hover:opacity-100`}
                     title="Edit"
                   >
                     <Pencil size={16} />
                   </button>
                   <button 
                     onClick={() => { setSelectedItemForShare(item); setIsShareModalOpen(true); }}
-                    className="hidden lg:flex p-1.5 text-gray-400 hover:text-[#7A005D] hover:bg-[#7A005D]/10 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                    className={`${isCompactTable ? 'hidden' : 'flex'} p-1.5 text-gray-400 hover:text-[#7A005D] hover:bg-[#7A005D]/10 rounded-lg transition-all opacity-0 group-hover:opacity-100`}
                     title="Share"
                   >
                     <Share2 size={16} />
                   </button>
                   <button 
                     onClick={(e) => { e.stopPropagation(); setItems(prev => prev.filter(i => i.id !== item.id)); }}
-                    className="hidden lg:flex p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                    className={`${isCompactTable ? 'hidden' : 'flex'} p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all opacity-0 group-hover:opacity-100`}
                     title="Remove"
                   >
                     <Trash2 size={16} />
