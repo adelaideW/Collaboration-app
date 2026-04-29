@@ -60,6 +60,19 @@ const MISSING_KEY_MESSAGE =
   'Configure an OpenAI API key to use Rippling AI. For local dev, add `OPENAI_API_KEY=` or `VITE_OPENAI_API_KEY=` in `.env.local` ' +
   'from OpenAI dashboard. On Vercel, add `OPENAI_API_KEY` or `VITE_OPENAI_API_KEY` to Environment Variables and redeploy so the bundle includes the key.';
 
+const DRIVE_PROMPT_SUGGESTIONS = [
+  'Who created the last document, report, app, or workflow?',
+  'Who created the most artifacts in the last week?',
+  'Who created the most artifacts in the last 2 weeks?',
+  'Who created the most artifacts in the last year?',
+  'Give me the artifact names created in the last month',
+  'List artifacts created in the last year',
+  'What did I create in the last week?',
+  'What did myself create in the last 2 weeks?',
+  'What did Elena Rodriguez create in the last month?',
+  'What did Me create? (will prompt to add period)',
+] as const;
+
 function extractInsertableBlob(content: string): string {
   const fence = content.match(/```(?:plaintext|text)?\s*([\s\S]*?)```/i);
   if (fence?.[1]?.trim()) return fence[1].trim();
@@ -94,6 +107,7 @@ const AIChatPanel: React.FC<AIChatPanelProps> = ({
 }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState('');
+  const [isInputFocused, setIsInputFocused] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [panelWidth, setPanelWidth] = useState(400);
   const [isResizing, setIsResizing] = useState(false);
@@ -361,6 +375,10 @@ const AIChatPanel: React.FC<AIChatPanelProps> = ({
   const canInsert =
     !!onInsertIntoDocument &&
     (!!documentSessionFingerprint || isDocumentEditorRoute);
+  const showPromptSuggestions = !isDocumentAssist && isInputFocused;
+  const filteredPromptSuggestions = DRIVE_PROMPT_SUGGESTIONS.filter((prompt) =>
+    prompt.toLowerCase().includes(inputValue.trim().toLowerCase())
+  );
 
   const handleInsertAssistantText = useCallback((raw: string) => {
     const t = extractInsertableBlob(raw);
@@ -473,9 +491,34 @@ const AIChatPanel: React.FC<AIChatPanelProps> = ({
             }
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
+            onFocus={() => setIsInputFocused(true)}
+            onBlur={() => setIsInputFocused(false)}
             onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
             className="w-full bg-transparent text-[15px] text-gray-800 placeholder:text-slate-400 outline-none resize-none flex-1"
           />
+          {showPromptSuggestions && (
+            <div className="absolute left-4 right-4 bottom-[56px] z-20 rounded-xl border border-gray-200 bg-white shadow-md">
+              <div className="max-h-[160px] overflow-y-auto custom-scrollbar py-1">
+                {filteredPromptSuggestions.length > 0 ? (
+                  filteredPromptSuggestions.map((prompt) => (
+                    <button
+                      key={prompt}
+                      type="button"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => setInputValue(prompt)}
+                      className="w-full text-left px-3 py-2 text-[13px] text-gray-700 hover:bg-gray-50 transition-colors"
+                    >
+                      {prompt}
+                    </button>
+                  ))
+                ) : (
+                  <div className="px-3 py-2 text-[12px] text-gray-500">
+                    Questions aren’t supported in Rippling AI, OpenAI will be used for results instead.
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
           <div className="flex items-center justify-between mt-2">
             <button type="button" className="flex items-center gap-2 px-3 py-1.5 border border-gray-100 rounded-xl text-[12px] font-bold text-gray-700 hover:bg-gray-50 transition-colors shadow-sm bg-white">
               <Upload size={16} className="text-gray-500" />
