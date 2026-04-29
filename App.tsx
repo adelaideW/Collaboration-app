@@ -23,6 +23,18 @@ const App: React.FC = () => {
   const documentEditorRef = useRef<DocumentEditorRef>(null);
   const [initialDocumentTemplate, setInitialDocumentTemplate] = useState<{name: string, state: string} | null>(null);
 
+  useEffect(() => {
+    const syncSidebarToViewport = () => {
+      if (window.innerWidth < 1024) {
+        setIsSidebarCollapsed(true);
+      }
+    };
+
+    syncSidebarToViewport();
+    window.addEventListener('resize', syncSidebarToViewport);
+    return () => window.removeEventListener('resize', syncSidebarToViewport);
+  }, []);
+
   // Synchronize initial view with URL parameters for multi-tab support
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
