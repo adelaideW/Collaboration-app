@@ -103,7 +103,7 @@ interface FakeWrapProps {
 export function FakeTableWrap({ children }: FakeWrapProps) {
   return (
     <div className="w-full max-w-full overflow-x-auto">
-      <div className="min-w-[300px] border border-gray-200 rounded-xl bg-white shadow-sm">{children}</div>
+      <div className="min-w-[300px] border border-gray-200 rounded-xl bg-white shadow-sm overflow-hidden">{children}</div>
     </div>
   );
 }
@@ -481,7 +481,7 @@ function MostArtifactsBody({ rows, periodLabel }: { rows: Array<{ owner: string;
         >
           <UserCell name={r.owner} />
           <span className="text-[13px] text-right font-semibold tabular-nums">{r.count}</span>
-          <span className="text-[12px] text-gray-600">{periodLabel}</span>
+          <span className="text-[12px] text-gray-600 truncate" title={periodLabel}>{periodLabel}</span>
         </div>
       ))}
     </FakeTableWrap>
@@ -505,7 +505,7 @@ function ArtifactListBody({ rows, periodLabel }: { rows: ArtifactItem[]; periodL
           <span className="text-[12px] text-gray-800 truncate">{r.name}</span>
           <span className="text-[12px] text-gray-700">{asArtifactTypeLabel(r.type)}</span>
           <UserCell name={r.owner} />
-          <span className="text-[12px] text-gray-600">{periodLabel}</span>
+          <span className="text-[12px] text-gray-600 truncate" title={periodLabel}>{periodLabel}</span>
         </div>
       ))}
     </FakeTableWrap>
