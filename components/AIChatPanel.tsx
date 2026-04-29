@@ -10,8 +10,6 @@ import OpenAI from 'openai';
 import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions';
 import {
   X,
-  User,
-  Bot,
   Loader2,
   Columns,
   UserRoundPlus,
@@ -402,10 +400,7 @@ const AIChatPanel: React.FC<AIChatPanelProps> = ({
       {/* Content */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 bg-white flex flex-col min-h-0 custom-scrollbar">
         {messages.map((msg, idx) => (
-          <div key={`${idx}-${msg.role}`} className={`flex gap-3 mb-6 animate-in fade-in duration-300 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
-            <div className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center shadow-sm ${msg.role === 'user' ? 'bg-[#7A005D] text-white' : 'bg-white border border-gray-100 text-[#7A005D]'}`}>
-              {msg.role === 'user' ? <User size={16} /> : <Bot size={16} />}
-            </div>
+          <div key={`${idx}-${msg.role}`} className={`flex mb-6 animate-in fade-in duration-300 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             <div className={`flex flex-col gap-2 max-w-[85%] min-w-0 ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
               <div className={`p-4 rounded-2xl text-[14px] leading-relaxed shadow-sm break-words w-full ${msg.role === 'user' ? 'bg-[#7A005D] text-white rounded-tr-none' : 'bg-[#f9fafb] text-gray-800 border border-gray-100 rounded-tl-none'}`}>
                 {msg.role === 'user' ? (
@@ -461,7 +456,7 @@ const AIChatPanel: React.FC<AIChatPanelProps> = ({
 
       {/* Input Area */}
       <div className="px-4 pb-6 bg-white shrink-0">
-        <div className="relative border border-[#7A005D]/20 rounded-[24px] p-4 bg-white shadow-sm flex flex-col min-h-[140px] focus-within:border-[#7A005D]/40 transition-colors">
+        <div className="relative border border-[#7A005D]/20 rounded-[24px] p-4 bg-white shadow-sm flex flex-col min-h-[160px] focus-within:border-[#7A005D]/40 transition-colors">
           <textarea
             rows={1}
             placeholder={
