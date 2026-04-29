@@ -433,26 +433,47 @@ function itemInWindow(item: DriveItem, start: Date, end: Date): boolean {
   return d.getTime() >= start.getTime() && d.getTime() <= end.getTime();
 }
 
+function cleanExtractedPersonName(raw: string): string {
+  return raw
+    .replace(/^[{(<'"]+|[})>'"]+$/g, '')
+    .replace(/\s+/g, ' ')
+    .replace(/\b(the|a|an)\s+/gi, '')
+    .trim();
+}
+
+function resolveOwnerFromExtracted(cleanedExtracted: string, owners: string[]): string | null {
+  if (!cleanedExtracted) return null;
+  const exact = owners.find((o) => o.toLowerCase() === cleanedExtracted.toLowerCase());
+  if (exact) return exact;
+
+  const contains = owners.find((o) =>
+    o.toLowerCase().includes(cleanedExtracted.toLowerCase()) ||
+    cleanedExtracted.toLowerCase().includes(o.toLowerCase())
+  );
+  if (contains) return contains;
+
+  return null;
+}
+
 function resolvePersonFromQuery(q: string): string | null {
   if (/\b(myself|me|i|mine)\b/.test(q)) return 'Me';
 
-  const extracted = q.match(/\bwhat\s+did\s+(.+?)\s+create\b/i)?.[1]?.trim() ?? '';
-  const cleanedExtracted = extracted
-    .replace(/^[{(<'"]+|[})>'"]+$/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
+  const fromWhatDid = q.match(/\bwhat\s+did\s+(.+?)\s+create\b/i)?.[1]?.trim() ?? '';
+  const fromDidCreate = q.match(/\bdid\s+(.+?)\s+create\b/i)?.[1]?.trim() ?? '';
+  const fromWhatCreated = q.match(/\bwhat\s+(.+?)\s+created\b/i)?.[1]?.trim() ?? '';
+  let extracted =
+    fromWhatDid || fromDidCreate || fromWhatCreated;
+
+  // "show what Elena Rodriguez created …" → prefer the name between "what" and "created"
+  if (!extracted && /\bshow\s+what\b/i.test(q)) {
+    extracted = q.match(/\bwhat\s+(.+?)\s+created\b/i)?.[1]?.trim() ?? '';
+  }
+
+  const cleanedExtracted = cleanExtractedPersonName(extracted);
 
   const owners = Array.from(new Set(artifactItems().map((i) => i.owner)));
-  if (cleanedExtracted) {
-    const exact = owners.find((o) => o.toLowerCase() === cleanedExtracted.toLowerCase());
-    if (exact) return exact;
-
-    const contains = owners.find((o) =>
-      o.toLowerCase().includes(cleanedExtracted.toLowerCase()) ||
-      cleanedExtracted.toLowerCase().includes(o.toLowerCase())
-    );
-    if (contains) return contains;
-  }
+  const fromExplicit = cleanedExtracted ? resolveOwnerFromExtracted(cleanedExtracted, owners) : null;
+  if (fromExplicit) return fromExplicit;
 
   return owners.find((o) => q.includes(o.toLowerCase())) ?? null;
 }
@@ -693,18 +714,41 @@ function renderArtifactListByPeriod(q: string): DriveFakeReply | null {
   };
 }
 
+function isSpecificPersonCreationAsk(q: string): boolean {
+  if (!/\b(create|created|creating|built|made)\b/.test(q)) return false;
+
+  if (/\b(myself|me|i|mine)\b/.test(q)) return true;
+
+  const hasArtifactOrAppWords =
+    /\b(artifact|artifacts|document|documents|report|reports|app|apps|workflow|workflows)\b/.test(q);
+  const artifactWithInterrogative =
+    hasArtifactOrAppWords && /\b(what|show|list|tell me)\b/.test(q);
+
+  // Person-directed phrasing (no artifact noun needed), e.g. "What did Elena Rodriguez create..."
+  const hasWhatDid = /\bwhat\s+did\b/.test(q);
+  /** e.g. "What documents/reports did Sarah Chen create …" */
+  const hasWhatXNounDid =
+    /\bwhat\s+[a-z0-9''\-\u2019][a-z0-9''\-\s\u2019]{0,96}\sdid\b/i.test(q);
+
+  const hasDidCreate = /\bdid\s+.+\s+create\b/i.test(q);
+  const hasWhatCreated = /\bwhat\s+.+\s+created\b/i.test(q);
+  const hasShowWhatCreated = /\bshow\s+what\b/.test(q) && /\bcreated\b/.test(q);
+
+  return (
+    artifactWithInterrogative ||
+    hasWhatDid ||
+    hasWhatXNounDid ||
+    hasDidCreate ||
+    hasWhatCreated ||
+    hasShowWhatCreated
+  );
+}
+
 function renderSpecificPersonArtifacts(q: string): DriveFakeReply | null {
   const person = resolvePersonFromQuery(q);
   if (!person) return null;
 
-  const asksPersonArtifacts =
-    /\b(what|show|list|tell me)\b/.test(q) &&
-    /\b(created|create|built|made)\b/.test(q) &&
-    (
-      /\b(artifact|artifacts|document|documents|report|reports|app|apps|workflow|workflows)\b/.test(q) ||
-      /\b(myself|me|i|mine)\b/.test(q)
-    );
-  if (!asksPersonArtifacts) return null;
+  if (!isSpecificPersonCreationAsk(q)) return null;
 
   if (!hasPeriodPhrase(q)) {
     return {
