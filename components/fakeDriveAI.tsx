@@ -32,9 +32,66 @@ function formatMMDDYYYY(d: Date): string {
   return `${mm}/${dd}/${yyyy}`;
 }
 
+function startOfWeekMonday(now: Date): Date {
+  const d = new Date(now);
+  const day = d.getDay(); // 0 Sun ... 6 Sat
+  const delta = day === 0 ? -6 : 1 - day;
+  d.setDate(d.getDate() + delta);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function endOfDay(now: Date): Date {
+  const d = new Date(now);
+  d.setHours(23, 59, 59, 999);
+  return d;
+}
+
 function quarterStart(now = new Date()): Date {
   const q = Math.floor(now.getMonth() / 3);
   return new Date(now.getFullYear(), q * 3, 1);
+}
+
+function resolveReportingRangeLabel(query: string, now = new Date()): string {
+  const q = query.toLowerCase();
+  const todayEnd = endOfDay(now);
+  let start = quarterStart(now);
+  let end = todayEnd;
+
+  if (/\blast\s+year\b|\bin\s+last\s+year\b/.test(q)) {
+    const y = now.getFullYear() - 1;
+    start = new Date(y, 0, 1);
+    end = new Date(y, 11, 31, 23, 59, 59, 999);
+  } else if (/\bthis\s+year\b/.test(q)) {
+    start = new Date(now.getFullYear(), 0, 1);
+  } else if (/\blast\s+month\b/.test(q)) {
+    const y = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
+    const m = now.getMonth() === 0 ? 11 : now.getMonth() - 1;
+    start = new Date(y, m, 1);
+    end = new Date(y, m + 1, 0, 23, 59, 59, 999);
+  } else if (/\bthis\s+month\b/.test(q)) {
+    start = new Date(now.getFullYear(), now.getMonth(), 1);
+  } else if (/\blast\s+week\b/.test(q)) {
+    const thisWeek = startOfWeekMonday(now);
+    start = new Date(thisWeek);
+    start.setDate(thisWeek.getDate() - 7);
+    end = new Date(thisWeek);
+    end.setDate(thisWeek.getDate() - 1);
+    end.setHours(23, 59, 59, 999);
+  } else if (/\bthis\s+week\b/.test(q)) {
+    start = startOfWeekMonday(now);
+  } else if (/\blast\s+quarter\b/.test(q)) {
+    const thisQuarterStart = quarterStart(now);
+    start = new Date(thisQuarterStart);
+    start.setMonth(thisQuarterStart.getMonth() - 3);
+    end = new Date(thisQuarterStart);
+    end.setDate(thisQuarterStart.getDate() - 1);
+    end.setHours(23, 59, 59, 999);
+  } else if (/\bthis\s+quarter\b/.test(q)) {
+    start = quarterStart(now);
+  }
+
+  return `${formatMMDDYYYY(start)}–${formatMMDDYYYY(end)}`;
 }
 
 interface FakeWrapProps {
@@ -135,11 +192,7 @@ function DocumentsTodayBodyFixed() {
 }
 
 // --- Intent B ---
-function TopCreatorsBody() {
-  const today = new Date();
-  const start = quarterStart(today);
-  const rangeLabel = `${formatMMDDYYYY(start)}–${formatMMDDYYYY(today)}`;
-
+function TopCreatorsBody({ rangeLabel }: { rangeLabel: string }) {
   const rows = [
     { user: 'Riley Nguyen', count: 28 },
     { user: 'Taylor Brooks', count: 22 },
@@ -309,13 +362,21 @@ function renderSharing(q: string): DriveFakeReply | null {
 }
 
 function renderLeaderboard(q: string): DriveFakeReply | null {
+  const asksRanking =
+    /\b(top\s+creators?|leaderboard|most\s+reports?|most\s+documents?|ranks?\s+by\s+documents?|who\s+created\s+the\s+most)\b/.test(q);
+  const asksCreatedInPeriod =
+    /\b(creat(?:e|ed|ion)|new|uploaded)\b/.test(q) &&
+    /\b(documents?|reports?)\b/.test(q) &&
+    (/\b(last|this)\s+(year|month|week|quarter)\b/.test(q) || /\bin\s+last\s+year\b/.test(q));
+
   if (
-    /\b(top\s+creators?|leaderboard|most\s+reports?|most\s+documents?|ranks?\s+by\s+documents?|who\s+created\s+the\s+most)\b/.test(q)
+    asksRanking ||
+    asksCreatedInPeriod
   ) {
     return {
       preamble:
-        'Here are users with the highest count of newly created reports and documents in this quarter (prototype):',
-      body: <TopCreatorsBody />,
+        'Here are users with the highest count of newly created reports and documents in the selected period (prototype):',
+      body: <TopCreatorsBody rangeLabel={resolveReportingRangeLabel(q)} />,
     };
   }
   return null;
