@@ -108,6 +108,8 @@ const AIChatPanel: React.FC<AIChatPanelProps> = ({
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isInputFocused, setIsInputFocused] = useState(false);
+  const [selectedPrompt, setSelectedPrompt] = useState<string | null>(null);
+  const [highlightedSuggestionIndex, setHighlightedSuggestionIndex] = useState(-1);
   const [isLoading, setIsLoading] = useState(false);
   const [panelWidth, setPanelWidth] = useState(400);
   const [isResizing, setIsResizing] = useState(false);
@@ -375,10 +377,28 @@ const AIChatPanel: React.FC<AIChatPanelProps> = ({
   const canInsert =
     !!onInsertIntoDocument &&
     (!!documentSessionFingerprint || isDocumentEditorRoute);
-  const showPromptSuggestions = !isDocumentAssist && isInputFocused;
+  const showPromptSuggestions =
+    !isDocumentAssist &&
+    isInputFocused &&
+    !(selectedPrompt && inputValue === selectedPrompt);
   const filteredPromptSuggestions = DRIVE_PROMPT_SUGGESTIONS.filter((prompt) =>
     prompt.toLowerCase().includes(inputValue.trim().toLowerCase())
   );
+
+  useEffect(() => {
+    if (!showPromptSuggestions || filteredPromptSuggestions.length === 0) {
+      setHighlightedSuggestionIndex(-1);
+      return;
+    }
+    setHighlightedSuggestionIndex(0);
+  }, [showPromptSuggestions, inputValue]);
+
+  const applySuggestion = useCallback((prompt: string) => {
+    setInputValue(prompt);
+    setSelectedPrompt(prompt);
+    setIsInputFocused(false);
+    setHighlightedSuggestionIndex(-1);
+  }, []);
 
   const handleInsertAssistantText = useCallback((raw: string) => {
     const t = extractInsertableBlob(raw);
@@ -490,23 +510,59 @@ const AIChatPanel: React.FC<AIChatPanelProps> = ({
                 : 'Ask anything'
             }
             value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
+            onChange={(e) => {
+              const next = e.target.value;
+              setInputValue(next);
+              if (selectedPrompt && next !== selectedPrompt) {
+                setSelectedPrompt(null);
+              }
+            }}
             onFocus={() => setIsInputFocused(true)}
             onBlur={() => setIsInputFocused(false)}
-            onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
+            onKeyDown={(e) => {
+              if (showPromptSuggestions && filteredPromptSuggestions.length > 0) {
+                if (e.key === 'ArrowDown') {
+                  e.preventDefault();
+                  setHighlightedSuggestionIndex((prev) =>
+                    prev < filteredPromptSuggestions.length - 1 ? prev + 1 : 0
+                  );
+                  return;
+                }
+                if (e.key === 'ArrowUp') {
+                  e.preventDefault();
+                  setHighlightedSuggestionIndex((prev) =>
+                    prev > 0 ? prev - 1 : filteredPromptSuggestions.length - 1
+                  );
+                  return;
+                }
+                if (e.key === 'Enter' && !e.shiftKey && highlightedSuggestionIndex >= 0) {
+                  e.preventDefault();
+                  applySuggestion(filteredPromptSuggestions[highlightedSuggestionIndex]);
+                  return;
+                }
+              }
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSend();
+              }
+            }}
             className="w-full bg-transparent text-[15px] text-gray-800 placeholder:text-slate-400 outline-none resize-none flex-1"
           />
           {showPromptSuggestions && (
-            <div className="absolute left-4 right-4 bottom-[56px] z-20 rounded-xl border border-gray-200 bg-white shadow-md">
+            <div className="absolute left-4 right-4 bottom-full mb-2 z-20 rounded-xl border border-gray-200 bg-white shadow-md">
               <div className="max-h-[160px] overflow-y-auto custom-scrollbar py-1">
                 {filteredPromptSuggestions.length > 0 ? (
-                  filteredPromptSuggestions.map((prompt) => (
+                  filteredPromptSuggestions.map((prompt, idx) => (
                     <button
                       key={prompt}
                       type="button"
                       onMouseDown={(e) => e.preventDefault()}
-                      onClick={() => setInputValue(prompt)}
-                      className="w-full text-left px-3 py-2 text-[13px] text-gray-700 hover:bg-gray-50 transition-colors"
+                      onClick={() => applySuggestion(prompt)}
+                      className={`w-full text-left px-3 py-2 text-[13px] transition-colors ${
+                        highlightedSuggestionIndex === idx
+                          ? 'bg-gray-50 text-gray-900'
+                          : 'text-gray-700 hover:bg-gray-50'
+                      }`}
                     >
                       {prompt}
                     </button>
