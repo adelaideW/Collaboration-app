@@ -227,28 +227,8 @@ const DriveContent: React.FC<DriveContentProps> = ({ view, setView }) => {
 
   return (
     <div className="flex-1 flex flex-col min-h-0 bg-white overflow-hidden">
-      {view === 'HOME' && (
-        <div className="px-8 pt-8 pb-2 shrink-0 border-b border-gray-50">
-          <div className="rounded-2xl border border-gray-100 shadow-xl overflow-hidden bg-gradient-to-br from-[#fdf2f8] to-gray-50">
-            <img
-              src="/home-ai-chat-hero.png"
-              alt='Illustrative Rippling AI chat panel with the reply to "Who created documents today?"'
-              className="w-full h-auto max-h-[min(380px,40vh)] object-cover object-[center_top]"
-              width={1536}
-              height={1024}
-              loading="lazy"
-              decoding="async"
-            />
-          </div>
-          <p className="text-[12px] text-gray-400 mt-2.5 leading-relaxed text-center max-w-3xl mx-auto">
-            Rippling AI on Collaboration Drive answers analytics-style prompts in seconds—shown above for the
-            &ldquo;Who created documents today?&rdquo; conversation (illustrative).
-          </p>
-        </div>
-      )}
-
       {/* View Header */}
-      <div className={`${view === 'HOME' ? 'px-8 pt-5 pb-4' : 'px-8 pt-8 pb-4'} shrink-0`}>
+      <div className="px-8 pt-8 pb-4 shrink-0">
         <h1 className="text-2xl font-bold text-gray-900 tracking-tight mb-2">{getTitle()}</h1>
         <div className="flex items-center gap-2 text-sm text-gray-500">
           <span className="font-semibold text-gray-700">On Drive</span>
