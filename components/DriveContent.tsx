@@ -322,10 +322,10 @@ const DriveContent: React.FC<DriveContentProps> = ({ view, setView }) => {
                     <button 
                       onClick={(e) => toggleStar(item.id, e)}
                       className={`shrink-0 transition-all ${
-                        item.starred 
-                          ? 'text-yellow-400 opacity-100' 
-                          : isCompactTable
-                            ? 'text-gray-200 opacity-0 pointer-events-none'
+                        isCompactTable
+                          ? 'opacity-0 pointer-events-none'
+                          : item.starred
+                            ? 'text-yellow-400 opacity-100'
                             : 'text-gray-200 opacity-0 group-hover:opacity-100 hover:text-yellow-400'
                       }`}
                       title={item.starred ? "Unstar" : "Star"}
