@@ -8,16 +8,16 @@ import React, {
 } from 'react';
 import OpenAI from 'openai';
 import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions';
-import { 
-  X, 
-  User, 
-  Bot, 
-  Loader2, 
-  Columns, 
-  UserRoundPlus, 
-  MessageSquarePlus, 
-  Maximize2, 
-  Upload, 
+import {
+  X,
+  User,
+  Bot,
+  Loader2,
+  Columns,
+  UserRoundPlus,
+  MessageSquarePlus,
+  Maximize2,
+  Upload,
   ArrowUp,
   ArrowDownToLine,
 } from 'lucide-react';
@@ -26,11 +26,23 @@ import {
   buildDocumentEditorSystemInstruction,
 } from "./documentAISession";
 import { resolveOpenAIApiKey, OPENAI_CHAT_MODEL } from "./aiConfig";
+import {
+  matchDriveFakeReply,
+  driveChatNoMatchWithoutKeyReply,
+} from "./fakeDriveAI";
 
-interface Message {
-  role: 'user' | 'assistant';
+interface UserMessage {
+  role: 'user';
   content: string;
 }
+
+interface AssistantMessage {
+  role: 'assistant';
+  content: string;
+  rich?: React.ReactNode;
+}
+
+type ChatMessage = UserMessage | AssistantMessage;
 
 interface AIChatPanelProps {
   isOpen: boolean;
@@ -61,7 +73,7 @@ function formatSendError(error: unknown): string {
   return `Could not reach the AI: ${String(error)}`;
 }
 
-function buildOpenAiMessagesFromTranscript(base: Message[]): ChatCompletionMessageParam[] {
+function buildOpenAiMessagesFromTranscript(base: ChatMessage[]): ChatCompletionMessageParam[] {
   return base
     .filter((m) => m.role === 'user' || m.role === 'assistant')
     .filter((m) => m.role === 'user' || m.content.length > 0)
@@ -79,14 +91,14 @@ const AIChatPanel: React.FC<AIChatPanelProps> = ({
   isDocumentEditorRoute = false,
   onInsertIntoDocument,
 }) => {
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [panelWidth, setPanelWidth] = useState(400);
   const [isResizing, setIsResizing] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   /** Keeps synchronous transcript for chaining user turns between renders */
-  const messagesRef = useRef<Message[]>([]);
+  const messagesRef = useRef<ChatMessage[]>([]);
 
   const documentSessionFingerprint = useMemo(
     () => (documentSession ? JSON.stringify(documentSession) : ''),
@@ -104,6 +116,10 @@ const AIChatPanel: React.FC<AIChatPanelProps> = ({
     }
     return genericDrivePrompt;
   }, [documentSessionFingerprint]);
+
+  /** General drive chat: fake analytics tables work without an API key. */
+  const isDriveDemoChat =
+    !documentSessionFingerprint && !isDocumentEditorRoute;
 
   useEffect(() => {
     messagesRef.current = messages;
@@ -143,7 +159,7 @@ const AIChatPanel: React.FC<AIChatPanelProps> = ({
 
   /** Streams one assistant reply for the given transcript (must end with a user message). */
   const streamAssistantForTranscript = useCallback(
-    async (transcriptWithLatestUserTurn: Message[], systemPrompt: string) => {
+    async (transcriptWithLatestUserTurn: ChatMessage[], systemPrompt: string) => {
       const apiKey = resolveOpenAIApiKey();
       if (!apiKey) {
         setMessages((prev) => [...prev, { role: 'assistant', content: MISSING_KEY_MESSAGE }]);
@@ -211,6 +227,50 @@ const AIChatPanel: React.FC<AIChatPanelProps> = ({
       const systemInstruction =
         systemInstructionOverride ?? resolveSystemInstruction();
 
+      if (isDriveDemoChat) {
+        const fakeReply = matchDriveFakeReply(trimmed);
+        const nextTranscript: ChatMessage[] = [
+          ...messagesRef.current,
+          { role: 'user', content: trimmed },
+        ];
+        messagesRef.current = nextTranscript;
+        setMessages(nextTranscript);
+        setInputValue('');
+
+        if (fakeReply) {
+          const done: ChatMessage[] = [
+            ...nextTranscript,
+            {
+              role: 'assistant',
+              content: fakeReply.preamble,
+              rich: fakeReply.body,
+            },
+          ];
+          messagesRef.current = done;
+          setMessages(done);
+          return;
+        }
+
+        const apiKey = resolveOpenAIApiKey();
+        if (apiKey) {
+          await streamAssistantForTranscript(nextTranscript, systemInstruction);
+          return;
+        }
+
+        const noKey = driveChatNoMatchWithoutKeyReply();
+        const fallback: ChatMessage[] = [
+          ...nextTranscript,
+          {
+            role: 'assistant',
+            content: noKey.preamble,
+            rich: noKey.body,
+          },
+        ];
+        messagesRef.current = fallback;
+        setMessages(fallback);
+        return;
+      }
+
       if (!resolveOpenAIApiKey()) {
         setMessages((prev) => [
           ...prev,
@@ -221,7 +281,7 @@ const AIChatPanel: React.FC<AIChatPanelProps> = ({
         return;
       }
 
-      const nextTranscript: Message[] = [
+      const nextTranscript: ChatMessage[] = [
         ...messagesRef.current,
         { role: 'user', content: trimmed },
       ];
@@ -230,21 +290,51 @@ const AIChatPanel: React.FC<AIChatPanelProps> = ({
       setInputValue('');
       await streamAssistantForTranscript(nextTranscript, systemInstruction);
     },
-    [resolveSystemInstruction, streamAssistantForTranscript]
+    [
+      resolveSystemInstruction,
+      streamAssistantForTranscript,
+      isDriveDemoChat,
+    ]
   );
 
-  /** Initialize sidebar product query or reset thread when opening the panel */
+  /** Initialize sidebar query or reset thread when opening the panel */
   useEffect(() => {
     if (!isOpen) return;
 
     messagesRef.current = [];
 
-    if (!documentSessionFingerprint && initialQuery) {
-      const userContent = `Tell me about products related to: "${initialQuery}"`;
-      const seed: Message[] = [{ role: 'user', content: userContent }];
-      messagesRef.current = seed;
-      setMessages(seed);
-      void streamAssistantForTranscript(seed, genericDrivePrompt);
+    const q = initialQuery?.trim();
+    if (!documentSessionFingerprint && q) {
+      const fakeReply = matchDriveFakeReply(q);
+      if (fakeReply) {
+        const seed: ChatMessage[] = [
+          { role: 'user', content: q },
+          {
+            role: 'assistant',
+            content: fakeReply.preamble,
+            rich: fakeReply.body,
+          },
+        ];
+        messagesRef.current = seed;
+        setMessages(seed);
+      } else if (resolveOpenAIApiKey()) {
+        const seed: ChatMessage[] = [{ role: 'user', content: q }];
+        messagesRef.current = seed;
+        setMessages(seed);
+        void streamAssistantForTranscript(seed, genericDrivePrompt);
+      } else {
+        const hint = driveChatNoMatchWithoutKeyReply();
+        const seed: ChatMessage[] = [
+          { role: 'user', content: q },
+          {
+            role: 'assistant',
+            content: hint.preamble,
+            rich: hint.body,
+          },
+        ];
+        messagesRef.current = seed;
+        setMessages(seed);
+      }
     } else {
       setMessages([]);
     }
@@ -312,16 +402,30 @@ const AIChatPanel: React.FC<AIChatPanelProps> = ({
       {/* Content */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 bg-white flex flex-col min-h-0 custom-scrollbar">
         {messages.map((msg, idx) => (
-          <div key={`${idx}-${msg.role}-${msg.content.slice(0, 12)}`} className={`flex gap-3 mb-6 animate-in fade-in duration-300 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
+          <div key={`${idx}-${msg.role}`} className={`flex gap-3 mb-6 animate-in fade-in duration-300 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
             <div className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center shadow-sm ${msg.role === 'user' ? 'bg-[#7A005D] text-white' : 'bg-white border border-gray-100 text-[#7A005D]'}`}>
               {msg.role === 'user' ? <User size={16} /> : <Bot size={16} />}
             </div>
-            <div className={`flex flex-col gap-2 max-w-[85%] ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
-              <div className={`p-4 rounded-2xl text-[14px] leading-relaxed shadow-sm whitespace-pre-wrap break-words ${msg.role === 'user' ? 'bg-[#7A005D] text-white rounded-tr-none' : 'bg-[#f9fafb] text-gray-800 border border-gray-100 rounded-tl-none'}`}>
-                {msg.content || (isLoading && <Loader2 size={16} className="animate-spin text-gray-300" />)}
+            <div className={`flex flex-col gap-2 max-w-[85%] min-w-0 ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
+              <div className={`p-4 rounded-2xl text-[14px] leading-relaxed shadow-sm break-words w-full ${msg.role === 'user' ? 'bg-[#7A005D] text-white rounded-tr-none' : 'bg-[#f9fafb] text-gray-800 border border-gray-100 rounded-tl-none'}`}>
+                {msg.role === 'user' ? (
+                  <span className="whitespace-pre-wrap">{msg.content}</span>
+                ) : (
+                  <>
+                    {msg.content !== '' ? (
+                      <p className="whitespace-pre-wrap mb-0">{msg.content}</p>
+                    ) : (
+                      isLoading && <Loader2 size={16} className="animate-spin text-gray-300" />
+                    )}
+                    {msg.role === 'assistant' && msg.rich && (
+                      <div className={`${msg.content ? 'mt-4' : ''} text-gray-900`}>{msg.rich}</div>
+                    )}
+                  </>
+                )}
               </div>
               {msg.role === 'assistant' &&
                 canInsert &&
+                msg.content &&
                 extractInsertableBlob(msg.content).length > 0 && (
                   <button
                     type="button"

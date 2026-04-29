@@ -1,0 +1,369 @@
+import React from 'react';
+import { Eye, Pencil } from 'lucide-react';
+import { USER_AVATAR_URL } from './TopBar';
+
+function avatarForName(name: string): string {
+  return name.startsWith('You') ? USER_AVATAR_URL : `https://i.pravatar.cc/100?u=${encodeURIComponent(name)}`;
+}
+
+export function normalizeQuery(text: string): string {
+  return text.trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
+function formatHHmm(d = new Date()): string {
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mm = String(d.getMinutes()).padStart(2, '0');
+  return `${hh}:${mm}`;
+}
+
+function formatMMDDYYYY(d: Date): string {
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  const yyyy = d.getFullYear();
+  return `${mm}/${dd}/${yyyy}`;
+}
+
+function quarterStart(now = new Date()): Date {
+  const q = Math.floor(now.getMonth() / 3);
+  return new Date(now.getFullYear(), q * 3, 1);
+}
+
+interface FakeWrapProps {
+  children: React.ReactNode;
+}
+
+export function FakeTableWrap({ children }: FakeWrapProps) {
+  return (
+    <div className="overflow-x-auto -mx-1">
+      <div className="min-w-[300px] border border-gray-200 rounded-xl bg-white shadow-sm">{children}</div>
+    </div>
+  );
+}
+
+function ActionIcons() {
+  return (
+    <div className="flex items-center justify-center gap-0.5">
+      <button
+        type="button"
+        aria-label="Edit document"
+        className="p-1.5 rounded-lg text-gray-500 hover:bg-[#7A005D]/10 hover:text-[#7A005D] transition-colors"
+      >
+        <Pencil size={16} strokeWidth={2} />
+      </button>
+      <button
+        type="button"
+        aria-label="Preview document"
+        className="p-1.5 rounded-lg text-gray-500 hover:bg-[#7A005D]/10 hover:text-[#7A005D] transition-colors"
+      >
+        <Eye size={16} strokeWidth={2} />
+      </button>
+    </div>
+  );
+}
+
+function UserCell({ name }: { name: string }) {
+  return (
+    <div className="flex items-center gap-2 min-w-0">
+      <img
+        src={avatarForName(name)}
+        alt=""
+        className="w-8 h-8 rounded-full border border-white shadow shrink-0"
+      />
+      <span className="text-[13px] font-medium text-gray-900 truncate">{name}</span>
+    </div>
+  );
+}
+
+// --- Intent A ---
+function RowGridTemplate({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      className="grid gap-2 px-3 py-3 border-b border-gray-50 last:border-0 items-center"
+      style={{
+        gridTemplateColumns: 'minmax(140px,1.6fr) minmax(100px,1.4fr) minmax(70px,0.65fr) auto',
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function DocumentsTodayBodyFixed() {
+  const tDynamic = formatHHmm();
+  const rows = [
+    { user: 'Maya Patel', doc: 'Q2 Headcount Forecast.xlsx', t: '09:12' },
+    { user: 'Jordan Lee', doc: 'Vendor NDA – Acme Corp', t: '10:41' },
+    { user: 'Sam Rivera', doc: 'Board deck – FY26 strategy', t: '11:58' },
+    { user: 'Alex Chen', doc: 'Offboarding checklist – Draft', t: tDynamic },
+  ];
+
+  return (
+    <FakeTableWrap>
+      <div className="border-b border-gray-100 px-3 py-2 bg-gray-50 rounded-t-xl grid gap-2 text-[10px] font-bold uppercase tracking-wider text-gray-400"
+        style={{
+          gridTemplateColumns: 'minmax(140px,1.6fr) minmax(100px,1.4fr) minmax(70px,0.65fr) auto',
+        }}
+      >
+        <div>User</div>
+        <div>Document</div>
+        <div>Created today</div>
+        <div className="text-center">Actions</div>
+      </div>
+      {rows.map((r) => (
+        <div key={r.doc}>
+          <RowGridTemplate>
+            <UserCell name={r.user} />
+            <span className="text-[12px] text-gray-700 font-medium truncate" title={r.doc}>
+              {r.doc}
+            </span>
+            <span className="text-[12px] text-gray-600 tabular-nums">{r.t}</span>
+            <ActionIcons />
+          </RowGridTemplate>
+        </div>
+      ))}
+    </FakeTableWrap>
+  );
+}
+
+// --- Intent B ---
+function TopCreatorsBody() {
+  const today = new Date();
+  const start = quarterStart(today);
+  const rangeLabel = `${formatMMDDYYYY(start)}–${formatMMDDYYYY(today)}`;
+
+  const rows = [
+    { user: 'Riley Nguyen', count: 28 },
+    { user: 'Taylor Brooks', count: 22 },
+    { user: 'Morgan Reyes', count: 19 },
+  ];
+
+  return (
+    <FakeTableWrap>
+      <div
+        className="border-b border-gray-100 px-3 py-2 bg-gray-50 rounded-t-xl grid gap-2 text-[10px] font-bold uppercase tracking-wider text-gray-400 items-center"
+        style={{ gridTemplateColumns: 'minmax(140px,1.8fr) minmax(64px,0.75fr) minmax(168px,1.4fr)' }}
+      >
+        <div>User</div>
+        <div className="text-right">Reports / docs</div>
+        <div>Reporting period</div>
+      </div>
+      {rows.map((r) => (
+        <div
+          key={r.user}
+          className="grid gap-2 px-3 py-3 border-b border-gray-50 last:border-0 items-center"
+          style={{ gridTemplateColumns: 'minmax(140px,1.8fr) minmax(64px,0.75fr) minmax(168px,1.4fr)' }}
+        >
+          <UserCell name={r.user} />
+          <div className="text-[13px] font-semibold text-gray-900 text-right tabular-nums">{r.count}</div>
+          <div className="text-[12px] text-gray-600 tabular-nums">{rangeLabel}</div>
+        </div>
+      ))}
+      <div className="px-3 py-2 text-[11px] text-gray-400">Counts include uploaded reports and new documents shared on Drive.</div>
+    </FakeTableWrap>
+  );
+}
+
+// --- Intent C ---
+function PendingSignaturesBody() {
+  const rows = [
+    { doc: 'Offer letter – J. Patel', owner: 'Casey Wu', due: 'May 03' },
+    { doc: 'NDA renewal – Lunar Labs', owner: 'Drew Patel', due: 'May 05' },
+    { doc: 'IC agreement – Contractor', owner: 'Jamie Santos', due: 'May 08' },
+  ];
+
+  return (
+    <FakeTableWrap>
+      <div
+        className="border-b border-gray-100 px-3 py-2 bg-gray-50 rounded-t-xl grid gap-2 text-[10px] font-bold uppercase tracking-wider text-gray-400"
+        style={{ gridTemplateColumns: 'minmax(120px,1.6fr) minmax(112px,1.2fr) minmax(80px,0.8fr)' }}
+      >
+        <div>Document</div>
+        <div>Owner</div>
+        <div>Due</div>
+      </div>
+      {rows.map((r) => (
+        <div
+          key={r.doc}
+          className="grid gap-2 px-3 py-3 border-b border-gray-50 last:border-0 items-center"
+          style={{ gridTemplateColumns: 'minmax(120px,1.6fr) minmax(112px,1.2fr) minmax(80px,0.8fr)' }}
+        >
+          <span className="text-[12px] text-gray-900 font-medium truncate">{r.doc}</span>
+          <UserCell name={r.owner} />
+          <span className="text-[12px] text-gray-600">{r.due}</span>
+        </div>
+      ))}
+    </FakeTableWrap>
+  );
+}
+
+// --- Intent D ---
+function SharingActivityBody() {
+  const t = formatHHmm();
+  const rows = [
+    { user: 'Harper Diaz', resource: 'Compensationbands_FY26.pdf', time: '08:54' },
+    { user: 'Noah Wright', resource: 'All-hands recap – Notes', time: '12:07' },
+    { user: 'Emma Patel', resource: 'Eng roadmap Q3.docx', time: t },
+  ];
+
+  return (
+    <FakeTableWrap>
+      <div
+        className="border-b border-gray-100 px-3 py-2 bg-gray-50 rounded-t-xl grid gap-2 text-[10px] font-bold uppercase tracking-wider text-gray-400"
+        style={{ gridTemplateColumns: 'minmax(128px,1.4fr) minmax(100px,1.4fr) minmax(64px,0.7fr)' }}
+      >
+        <div>Sharer</div>
+        <div>Resource</div>
+        <div>Shared at</div>
+      </div>
+      {rows.map((r) => (
+        <div
+          key={r.resource}
+          className="grid gap-2 px-3 py-3 border-b border-gray-50 last:border-0 items-center"
+          style={{ gridTemplateColumns: 'minmax(128px,1.4fr) minmax(100px,1.4fr) minmax(64px,0.7fr)' }}
+        >
+          <UserCell name={r.user} />
+          <span className="text-[12px] text-gray-800 truncate">{r.resource}</span>
+          <span className="text-[12px] text-gray-600 tabular-nums">{r.time}</span>
+        </div>
+      ))}
+    </FakeTableWrap>
+  );
+}
+
+// --- Intent E ---
+function StorageByDeptBody() {
+  const rows = [
+    { dept: 'Engineering', usage: '1.92 TB' },
+    { dept: 'People Ops', usage: '640 GB' },
+    { dept: 'Finance', usage: '512 GB' },
+    { dept: 'Sales', usage: '388 GB' },
+  ];
+
+  return (
+    <FakeTableWrap>
+      <div
+        className="border-b border-gray-100 px-3 py-2 bg-gray-50 rounded-t-xl grid gap-2 text-[10px] font-bold uppercase tracking-wider text-gray-400 grid-cols-2"
+      >
+        <div>Department</div>
+        <div className="text-right">Estimated usage</div>
+      </div>
+      {rows.map((r) => (
+        <div
+          key={r.dept}
+          className="grid gap-2 px-3 py-3 border-b border-gray-50 last:border-0 items-center grid-cols-2"
+        >
+          <span className="text-[13px] font-medium text-gray-900">{r.dept}</span>
+          <span className="text-[13px] text-gray-700 text-right tabular-nums">{r.usage}</span>
+        </div>
+      ))}
+    </FakeTableWrap>
+  );
+}
+
+export interface DriveFakeReply {
+  preamble: string;
+  body: React.ReactNode;
+}
+
+function renderStorage(q: string): DriveFakeReply | null {
+  if (
+    /\b(storage|quota|capacity|usage)\b/.test(q) &&
+    /\b(department|team|teams|departmental|division|who uses|biggest consumer)\b/.test(q)
+  ) {
+    return {
+      preamble: 'Here’s a snapshot of modeled storage usage by department (demo data):',
+      body: <StorageByDeptBody />,
+    };
+  }
+  return null;
+}
+
+function renderSignatures(q: string): DriveFakeReply | null {
+  if (/\b(pending\s+signature|awaiting\s+signature|documents?\s+(awaiting|needing)|need\s+(to\s+)?sign)\b/i.test(q) || (/\bpending\b/.test(q) && /\bsign/.test(q))) {
+    return {
+      preamble:
+        'Below are envelopes that are still awaiting signature—follow up before the dates shown (prototype data):',
+      body: <PendingSignaturesBody />,
+    };
+  }
+  return null;
+}
+
+function renderSharing(q: string): DriveFakeReply | null {
+  if (/\brecent\s+share|who\s+shared|sharing\s+activity|document\s+shares\b/.test(q)) {
+    return {
+      preamble: 'Latest sharing activity surfaced on Collaboration Drive today (demo):',
+      body: <SharingActivityBody />,
+    };
+  }
+  return null;
+}
+
+function renderLeaderboard(q: string): DriveFakeReply | null {
+  if (
+    /\b(top\s+creators?|leaderboard|most\s+reports|most\s+documents|ranks?\s+by\s+documents?|who\s+created\s+the\s+most)\b/.test(q)
+  ) {
+    return {
+      preamble:
+        'Here are users with the highest count of newly created reports and documents in this quarter (prototype):',
+      body: <TopCreatorsBody />,
+    };
+  }
+  return null;
+}
+
+function renderCreatedToday(q: string): DriveFakeReply | null {
+  const mentionsToday = /\b(today|this\s+morning)\b/.test(q);
+  const creationContext =
+    /\b(created|creation|new\s+documents?|uploaded|who\s+created|what\s+was\s+created)\b/.test(q);
+  if (
+    (mentionsToday && creationContext) ||
+    /\bdocuments?\s+created\s+today\b/.test(q) ||
+    /\bwhat\s+(was|got)\s+created\s+today\b/.test(q)
+  ) {
+    return {
+      preamble: 'People who created documents on Drive today, with timestamps (prototype data):',
+      body: <DocumentsTodayBodyFixed />,
+    };
+  }
+  return null;
+}
+
+/** Drive-only demo replies matching common analytics-style questions (no backend). Order: most specific first. */
+export function matchDriveFakeReply(userText: string): DriveFakeReply | null {
+  const q = normalizeQuery(userText);
+  if (!q) return null;
+
+  return (
+    renderStorage(q) ??
+    renderSignatures(q) ??
+    renderSharing(q) ??
+    renderLeaderboard(q) ??
+    renderCreatedToday(q)
+  );
+}
+
+/** Shown when the user has no API key and the message did not match a demo scenario. */
+export const DRIVE_CHAT_DEMO_PROMPTS = [
+  'Who created documents today?',
+  'Who created the most reports this quarter?',
+  'Show pending signatures',
+  'Recent shares on Drive today',
+  'Storage usage by department',
+];
+
+export function driveChatNoMatchWithoutKeyReply(): DriveFakeReply {
+  return {
+    preamble:
+      'Collaboration Drive can answer analytics-style questions in this prototype (no API key required). Try one of:',
+    body: (
+      <FakeTableWrap>
+        <ul className="px-4 py-3 space-y-2 text-[13px] text-gray-700 list-disc list-inside">
+          {DRIVE_CHAT_DEMO_PROMPTS.map((p) => (
+            <li key={p}>{p}</li>
+          ))}
+        </ul>
+      </FakeTableWrap>
+    ),
+  };
+}
