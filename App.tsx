@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Sidebar from './components/Sidebar';
 import TopBar from './components/TopBar';
 import DriveContent from './components/DriveContent';
@@ -82,6 +82,12 @@ const App: React.FC = () => {
     setAiChatQuery(undefined);
   };
 
+  const handleAIChatPanelWidthChange = useCallback((width: number) => {
+    if (width > 600) {
+      setIsSidebarCollapsed(true);
+    }
+  }, []);
+
   const renderContent = () => {
     switch (view) {
       case 'STORAGE':
@@ -158,6 +164,7 @@ const App: React.FC = () => {
           initialQuery={aiChatQuery}
           documentSession={documentAISession}
           isDocumentEditorRoute={view === 'DOCUMENT_EDITOR'}
+          onPanelWidthChange={handleAIChatPanelWidthChange}
           onInsertIntoDocument={
             view === 'DOCUMENT_EDITOR'
               ? (text: string) =>

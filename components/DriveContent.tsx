@@ -361,28 +361,28 @@ const DriveContent: React.FC<DriveContentProps> = ({ view, setView }) => {
                 <div className="w-48 py-4 flex justify-center gap-0.5 shrink-0">
                   <button 
                     onClick={(e) => toggleStar(item.id, e)}
-                    className={`p-1.5 rounded-lg transition-all opacity-0 group-hover:opacity-100 hover:bg-[#7A005D]/10 ${item.starred ? 'text-yellow-400' : 'text-gray-400 hover:text-yellow-400'}`}
+                    className={`hidden lg:flex p-1.5 rounded-lg transition-all opacity-0 group-hover:opacity-100 hover:bg-[#7A005D]/10 ${item.starred ? 'text-yellow-400' : 'text-gray-400 hover:text-yellow-400'}`}
                     title={item.starred ? "Unstar" : "Star"}
                   >
                     <Star size={16} className={item.starred ? "fill-yellow-400" : ""} />
                   </button>
                   <button 
                     onClick={() => handleEditItem(item)}
-                    className="p-1.5 text-gray-400 hover:text-[#7A005D] hover:bg-[#7A005D]/10 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                    className="hidden lg:flex p-1.5 text-gray-400 hover:text-[#7A005D] hover:bg-[#7A005D]/10 rounded-lg transition-all opacity-0 group-hover:opacity-100"
                     title="Edit"
                   >
                     <Pencil size={16} />
                   </button>
                   <button 
                     onClick={() => { setSelectedItemForShare(item); setIsShareModalOpen(true); }}
-                    className="p-1.5 text-gray-400 hover:text-[#7A005D] hover:bg-[#7A005D]/10 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                    className="hidden lg:flex p-1.5 text-gray-400 hover:text-[#7A005D] hover:bg-[#7A005D]/10 rounded-lg transition-all opacity-0 group-hover:opacity-100"
                     title="Share"
                   >
                     <Share2 size={16} />
                   </button>
                   <button 
                     onClick={(e) => { e.stopPropagation(); setItems(prev => prev.filter(i => i.id !== item.id)); }}
-                    className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                    className="hidden lg:flex p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
                     title="Remove"
                   >
                     <Trash2 size={16} />

@@ -52,6 +52,8 @@ interface AIChatPanelProps {
   isDocumentEditorRoute?: boolean;
   /** Inserts AI output into the open document canvas (plain text mode) */
   onInsertIntoDocument?: (text: string) => void;
+  /** Notifies parent when panel width changes (e.g. auto-collapse sidebar). */
+  onPanelWidthChange?: (width: number) => void;
 }
 
 const MISSING_KEY_MESSAGE =
@@ -88,6 +90,7 @@ const AIChatPanel: React.FC<AIChatPanelProps> = ({
   documentSession = null,
   isDocumentEditorRoute = false,
   onInsertIntoDocument,
+  onPanelWidthChange,
 }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState('');
@@ -154,6 +157,10 @@ const AIChatPanel: React.FC<AIChatPanelProps> = ({
       window.removeEventListener('mouseup', stopResizing);
     };
   }, [isResizing, resize, stopResizing]);
+
+  useEffect(() => {
+    onPanelWidthChange?.(panelWidth);
+  }, [panelWidth, onPanelWidthChange]);
 
   /** Streams one assistant reply for the given transcript (must end with a user message). */
   const streamAssistantForTranscript = useCallback(
