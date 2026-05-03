@@ -12,6 +12,7 @@ import FunctionEditor from './components/FunctionEditor';
 import ReportEditor from './components/ReportEditor';
 import WorkflowEditor from './components/WorkflowEditor';
 import { ViewType } from './types';
+import { PortfolioReturnLink } from './components/PortfolioReturnLink';
 
 const App: React.FC = () => {
   const [view, setView] = useState<ViewType>('HOME');
@@ -153,6 +154,7 @@ const App: React.FC = () => {
 
   return (
     <div className="flex flex-col h-screen bg-white text-gray-900 overflow-hidden font-sans">
+      <PortfolioReturnLink />
       <TopBar onAIChatOpen={handleToggleAIChat} setView={handleSetView} currentView={view} />
       
       <div className="flex-1 flex min-h-0 relative overflow-hidden">
