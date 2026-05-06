@@ -138,7 +138,8 @@ const App: React.FC = () => {
   // Standalone workspaces for creation and studio
   if (view === 'APP_STUDIO') {
     return (
-      <div className="h-screen bg-white font-sans overflow-hidden">
+      <div className="relative h-screen bg-white font-sans overflow-hidden">
+        <PortfolioReturnLink />
         <AppStudio setView={handleSetView} />
       </div>
     );
@@ -146,7 +147,8 @@ const App: React.FC = () => {
 
   if (view === 'CREATE_CUSTOM_APP') {
     return (
-      <div className="h-screen bg-white font-sans overflow-hidden">
+      <div className="relative h-screen bg-white font-sans overflow-hidden">
+        <PortfolioReturnLink />
         <CreateCustomApp setView={handleSetView} />
       </div>
     );
